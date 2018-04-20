@@ -29,33 +29,7 @@ Plants are distributed based on the their temperature and humidity requirements.
 
 At the moment... the player starts on the eastern coast.
 
---Issues
--slow performance
--ignore issue. blocks sometimes not placed when using stability requirements. (minor issue)
-Due to being above "ignore"
-- featurelessness of plains
-- start position less than ideal, just hoping end up okay
 
---To do
--optimize
-
-	-- I may be able to eliminate some of the dampners e.g. only use the height reducer.OR the influence strength
-	-- do the overlays (s_stone) need mup?. Or just add to the previous density? (haven taken out of s_stone..)
-	-- height limiters... are they needed? Doesn't den_t take care of that?
-	-
-	--
-
-	--climate random blend.
-	-- A zero axis biome
-
-- add all plants
-- balance biomes
-
-
-- more ores
-- volcanoes
--coral atolls/extinct domes
--ruins
 
 ]]
 
