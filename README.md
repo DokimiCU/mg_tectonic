@@ -3,7 +3,7 @@ by Dokimi
 
 Current version 0.1 - development
 
-This is a work in progress. Currently functional, but untested.
+This is a work in progress. Currently functional, but untested. May contain game breaking bugs, and be unbalanced, or incomplete in areas.
 
 # Map Outline
 A naturalistic mapgen for Minetest, based around mimicking the landscape of a tectonic plate boundary.
