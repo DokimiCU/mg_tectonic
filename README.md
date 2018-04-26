@@ -14,7 +14,7 @@ It generates a landmass bounded by oceans, with a mountain range running North-S
 
 Rocks, sediments, and soils are arranged in strata. Ores occur in concentrated deposits. Deep fissures run along the fault lines, go down deep enough and they fill with mineral rich magma. The uplift also leads to sea at the edges, which past a certain point drop away into deep ocean basins.
 
-The player starts dropped off on the Eastern coast, with a boat and an apple. Perhaps lost at sea, or washed ashore.
+The player starts in a tunnel beneath the mountains, faced with a choice of going east into the badlands, or west into the cloud forests.
 
 
 # How Does This Work?
