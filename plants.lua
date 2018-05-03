@@ -12,19 +12,6 @@ Many syntaxes are possible, with their default behaviour (see *grow*):
 
 ----------------------------------------------------
 --Notes on species set up:
---cover vs density vs priority:
---set rare species with a higher priority - so they show up.
---the larger the spacing needed the higher the cover.
---ground plants with a higher priority can help break up trees.?
-
---be careful of over tall trees - their heads get cut off by unloaded chunks.
---dont set too densly , impacts performamnce..leads to total darkness
---decrease by orders of magnitude for going from abundant to rare species (power laws)
-
-
---Possible species types:
--- specialists, generalists.
--- common, rare
 
 
 --temperatures and humidities used to set biomes /soils
@@ -52,13 +39,6 @@ Many syntaxes are possible, with their default behaviour (see *grow*):
 -- 13 -- sink hole caves
 -- 14 -- --coastal for all the above
 
---each of these will be split for variation, into 4 temp/humidity combos
---... so that each default type of tree/plant shows up across the map, in different forms and abundances
---this is for gameplay (access to resource), to break up the massive biomes, and aesthetics (diversity looks better).
---Each combo shall have it's dominant tree, (sub-canopy?), ground cover, "special"/aesthetic
---that leaves 1 tree, plus 2 bushes, other plants that can be a rare across the range
--- the same classes should be filled for these rare ones. +1 dominant ground cover
---this would seem to be alot of duplication, but allows for controlling densities and relative abundances
 
 --Conditions are:
 --temp
@@ -313,7 +293,7 @@ mgtec.register_plant({
 	end,
 })
 
---....these aren't the right names for farming... can't find what is!
+
 --Wheat
 mgtec.register_plant({
 	nodes = {"farming:wheat_8"},
