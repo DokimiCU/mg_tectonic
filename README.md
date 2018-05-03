@@ -10,15 +10,15 @@ A naturalistic mapgen for Minetest, based around mimicking the landscape of a te
 
 This mapgen aims to create a world which is scientifically informed, but within the minimalist bounds of default Minetest.
 
-It generates a landmass bounded by oceans, with a mountain range running North-South down the middle. The land, and its hills and valleys rise from gentle plains towards these snow capped mountains. A rainshadow leaves the East dry, and the West wet. Hot weather prevails in the North, cold in the South. 
+It generates a landmass bounded by oceans, with a mountains running North-South down the middle. The land, and its hills and valleys rise from softer terrain on the coasts to towering mountains in the centre. A rainshadow leaves the East dry, and the West wet. Hot weather prevails in the North, cold in the South. 
 
-Rocks, sediments, and soils are arranged in strata. Ores occur in concentrated deposits. Deep fissures run along the fault lines, go down deep enough and they fill with mineral rich magma. The uplift also leads to sea at the edges, which past a certain point drop away into deep ocean basins.
+Rocks, sediments, and soils are arranged in strata. Ores occur in concentrated deposits. Deep fissures run along the fault lines, go down deep enough and they fill with magma.
 
-The player starts in a tunnel beneath the mountains, faced with a choice of going east into the badlands, or west into the cloud forests.
+The player starts at the centre of the map, on an island in a large caldera. Two rivers drain this lake and provide access through the often impassable terrain. One river leads East into the badlands, the other river heads West into the cloud forests. 
 
 
 # How Does This Work?
-The generator uses the interference pattern between two waves. These are then modulated with noise, and by distance from the central axis of the map. This creates natural rolling hills progressing to steep mountains. Layers of rock and sediment are then added one after the other, with varying conditions to build up a layered landscape and geology.
+The generator uses a modified sine wave to generate the underlying mountains. This creates natural rolling hills progressing to steep mountains. Layers of rock and sediment are then added one after the other, with varying conditions to build up a layered landscape and geology.
 
 
 # License:
