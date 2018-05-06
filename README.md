@@ -1,9 +1,7 @@
 # mg_tectonic
 by Dokimi
 
-Current version 0.1 - development
-
-This is a work in progress. Currently functional, but untested. May contain game breaking bugs, and be unbalanced, or incomplete in areas.
+Current version 0.1
 
 # Map Outline
 A naturalistic mapgen for Minetest, based around mimicking the landscape of a tectonic plate boundary.
@@ -33,4 +31,5 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 
 
 # Change Log
-0.1
+0.1:
+-Initial release.
