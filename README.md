@@ -32,4 +32,4 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 
 # Change Log
 0.1:
--Initial release.
+- Initial release.
