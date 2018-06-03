@@ -341,7 +341,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(10 + 8 * rand)
+		local height = math.floor(16 + 4 * rand)
 		local radius = 3 + 1 * rand
 
 		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
@@ -378,7 +378,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(16 + 4 * rand)
+		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
 		mgtec.make_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
 	end,
@@ -452,7 +452,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(15 + 5 * rand)
+		local height = math.floor(17 + 3 * rand)
 		local radius = 3 + 1 * rand
 		if math.random(10) == 1 then
 			mgtec.make_apple_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.fruit, nodes.air, nodes.ignore)
@@ -491,7 +491,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(16 + 4 * rand)
+		local height = math.floor(17 + 3 * rand)
 		local radius = 3 + 1 * rand
 		mgtec.make_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
 	end,
@@ -514,8 +514,7 @@ mgtec.register_plant({
 --Dominant Ground cover
 --use repeats..
 
---Rare tree
----- Rare Pine tree
+--Rare jungle tree
 mgtec.register_plant({
 	nodes = {
 		trunk = "default:jungletree",
@@ -530,7 +529,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(16 + 4 * rand)
+		local height = math.floor(17 + 3 * rand)
 		local radius = 3 + 1 * rand
 		mgtec.make_tree2(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
 	end,
@@ -565,7 +564,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(16 + 4 * rand)
+		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
 		mgtec.make_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
 	end,
@@ -637,7 +636,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(16 + 4 * rand)
+		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
 
 		mgtec.make_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
@@ -786,7 +785,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(4 + 2 * rand)
+		local height = math.floor(5 + 3 * rand)
 		local radius = 3 + 1 * rand
 
 		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
@@ -842,7 +841,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(6 + 2 * rand)
+		local height = math.floor(6 + 3 * rand)
 		local radius = 3 + 1 * rand
 		if math.random(5) == 1 then
 			mgtec.make_apple_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.fruit, nodes.air, nodes.ignore)
@@ -880,7 +879,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(15 + 5 * rand)
+		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
 		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
 	end,
@@ -917,7 +916,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(14 + 6 * rand)
+		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
 
 		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
@@ -952,7 +951,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(10 + 10 * rand)
+		local height = math.floor(16 + 4 * rand)
 		local radius = 3 + 1 * rand
 
 		mgtec.make_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
@@ -990,7 +989,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(15 + 5 * rand)
+		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
 		mgtec.make_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
 	end,
@@ -1030,7 +1029,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(4 + 2 * rand)
+		local height = math.floor(8 + 4 * rand)
 		local radius = 3 + 1 * rand
 		mgtec.make_tree2(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
 	end,
@@ -1066,7 +1065,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(15 + 5 * rand)
+		local height = math.floor(16 + 4 * rand)
 		local radius = 3 + 1 * rand
 		if math.random(5) == 1 then
 			mgtec.make_apple_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.fruit, nodes.air, nodes.ignore)
@@ -1104,7 +1103,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(10 + 5 * rand)
+		local height = math.floor(12 + 5 * rand)
 		local radius = 3 + 1 * rand
 
 		mgtec.make_tree2(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
@@ -1141,7 +1140,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(14 + 4 * rand)
+		local height = math.floor(16 + 4 * rand)
 		local radius = 3 + 1 * rand
 		mgtec.make_tree2(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
 	end,
@@ -1176,7 +1175,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(10 + 4 * rand)
+		local height = math.floor(12 + 6 * rand)
 		local radius = 3 + 1 * rand
 
 		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
@@ -1266,7 +1265,7 @@ mgtec.register_plant({
 	end,
 	grow = function(nodes, pos, data, area)
 		local rand = math.random()
-		local height = math.floor(10 + 4 * rand)
+		local height = math.floor(15 + 4 * rand)
 		local radius = 3 + 1 * rand
 		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
 	end,
