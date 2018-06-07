@@ -35,5 +35,10 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 
 -Initial release.
 
-0.1.1
+0.1.1:
+
 -Adjust ocean basins to create lakes, lowland/plateaus, islands.
+
+-tweaked tree heights
+
+-more cave sediments
