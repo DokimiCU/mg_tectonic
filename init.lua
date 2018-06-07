@@ -49,12 +49,12 @@ local MAXMAG = -15000
 local XRS = 150
 
 --Where does the continental shelf end?
-local SHELFX = 22000
-local SHELFZ = 25000
+local SHELFX = 15000
+local SHELFZ = 18000
 --How deep are the oceans?
 local SEABED = -128
 --Strength of noise on continental shelf boundaries lines
-local CONOI = 2096
+local CONOI = 10000
 
 --Cave size.
 --Base cave threshold for fissures
@@ -611,9 +611,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					-- This is so the oceans aren't a flat 5m deep boring yawn.
 
 					local zab = math.abs(z)
-					local shelfnoi = (n_terr * CONOI) -- softens cliffs
-					local shelfsl = ((30 + (n_terr2 *20))*y) - (CONOI*2) --sets slope
-					local bed = SEABED + (n_terr * (SEABED/3))  --so sea bed is bumpy, with possible isles
+					local inn_terr = 1 - n_terr
+					local inn_terr2 = 1 - n_terr2
+					local shelfnoi = ((inn_terr ^ 3) * CONOI) -- softens cliffs
+					local shelfsl = ((96 + (inn_terr2 *95))*y) - 100 --sets slope
+					local bed = SEABED + ((inn_terr2 ^ 3) * (SEABED/2))  --so sea bed is bumpy, with possible isles
 					--Are we in the right place for oceans?
 					if (xab > (SHELFX + shelfnoi) - shelfsl
 					or zab > (SHELFZ + shelfnoi) - shelfsl)
@@ -1019,12 +1021,31 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								sedi = true
 								void = false
 							end
-						--give some stuff for caves... a little gravel
+						--give some stuff for caves...
+						--a little gravel and sand, and water. but not everywhere
 						elseif not nocave then
 							if nodu == c_stone then
-								data[vi] = SEDID.c_gravel
-								sedi = true
-								void = false
+								if n_terr > 0 then
+									data[vi] = SEDID.c_gravel
+									sedi = true
+									void = false
+								end
+								if n_terr > 0.9 then
+									swamp(data, vi, 50, SEDID.c_sand2, MISCID.c_river)
+									sedi = true
+									void = false
+								end
+							elseif nodu == c_stone2 then
+							 	if n_terr2 > 0 then
+									data[vi] = SEDID.c_sand
+									sedi = true
+									void = false
+								end
+								if n_terr2 > 0.9 then
+									swamp(data, vi, 50, SEDID.c_clay, MISCID.c_river)
+									sedi = true
+									void = false
+								end
 							end
 						--just regular seabed?
 						elseif nodu ~= SEDID.c_sand2 and nodu ~= MISCID.c_water then

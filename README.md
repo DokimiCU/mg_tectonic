@@ -1,7 +1,7 @@
 # mg_tectonic
 by Dokimi
 
-Current version 0.1
+Current version 0.1.1
 
 # Map Outline
 A naturalistic mapgen for Minetest, based around mimicking the landscape of a tectonic plate boundary.
@@ -34,3 +34,11 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 0.1:
 
 -Initial release.
+
+0.1.1:
+
+-Adjust ocean basins to create lakes, lowland/plateaus, islands.
+
+-tweaked tree heights
+
+-more cave sediments
