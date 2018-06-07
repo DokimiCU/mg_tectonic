@@ -1021,16 +1021,31 @@ minetest.register_on_generated(function(minp, maxp, seed)
 								sedi = true
 								void = false
 							end
-						--give some stuff for caves... a little gravel
+						--give some stuff for caves...
+						--a little gravel and sand, and water. but not everywhere
 						elseif not nocave then
 							if nodu == c_stone then
-								data[vi] = SEDID.c_gravel
-								sedi = true
-								void = false
+								if n_terr > 0 then
+									data[vi] = SEDID.c_gravel
+									sedi = true
+									void = false
+								end
+								if n_terr > 0.9 then
+									swamp(data, vi, 50, SEDID.c_sand2, MISCID.c_river)
+									sedi = true
+									void = false
+								end
 							elseif nodu == c_stone2 then
-								data[vi] = SEDID.c_sand
-								sedi = true
-								void = false
+							 	if n_terr2 > 0 then
+									data[vi] = SEDID.c_sand
+									sedi = true
+									void = false
+								end
+								if n_terr2 > 0.9 then
+									swamp(data, vi, 50, SEDID.c_clay, MISCID.c_river)
+									sedi = true
+									void = false
+								end
 							end
 						--just regular seabed?
 						elseif nodu ~= SEDID.c_sand2 and nodu ~= MISCID.c_water then
