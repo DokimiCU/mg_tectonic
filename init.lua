@@ -11,7 +11,8 @@ mgtec = {}
 
 ---------------------
 --SINGLENODE
-minetest.set_mapgen_params({mgname = "singlenode", flags = "nolight"})
+minetest.set_mapgen_setting("mgname", "singlenode", true)
+minetest.set_mapgen_setting("flags", "nolight", true)
 
 -----------------
 --PLANTS API
