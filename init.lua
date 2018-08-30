@@ -101,7 +101,7 @@ local function ore(ab_stra, y, ORET, ybig, n_strata, data, vi, OREID)
 	local ysmax_dia = -0.5 * TSTRA
 	local ysmin_dia = -0.83 * TSTRA
 	local ys_mese2 = -0.83 * TSTRA
-	]]
+	--]]
 
 
 	--threshold adjusted with depth
@@ -189,7 +189,7 @@ local function climate(x, z, y, n_terr, n_terr2)
 	local temp_x = 50 - blend
 
 	-- Easterners?
-	if x > 0 then
+	if x > 0 + (n_terr * 400) then --offset east-west border with some noise
 		-- linear decrease, intercept at 100 (don't use in -x)
 		temp_x = (-0.0017*x) + 100 - blend
 	end
@@ -215,10 +215,10 @@ local function climate(x, z, y, n_terr, n_terr2)
 
 	----poitive, east coast. Dry inland
 	--linear increase,
-	if x > 0 then
+	if x > 0 + (n_terr * 400) then
 		hum = (0.002*x) + blend
 	--increasing humid from far x to x= 0,(rain shadow)
-	elseif x <= 0 then  --negative , west coast. Wet inland
+	else  --negative , west coast. Wet inland
 		--linear increase,
 		hum = (0.0012*x) + 100 + blend
 	end
@@ -400,7 +400,7 @@ local data = {}
 -- GENERATION
 
 minetest.register_on_generated(function(minp, maxp, seed)
-
+  math.randomseed(seed)
 	--------------------------------
 	--don't do out of bounds!
 	--world is a square, ymin will do for z and x too.
@@ -468,6 +468,14 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	-- Set the buffer parameter to use and reuse 'data' for this.
 	vm:get_data(data)
 
+    -- some things need to be random, but stay constant throughout the loop
+    
+    -- number of lakes
+    local num_lakes = math.random(0,20)
+    local lakes = {}
+    for i = 0, num_lakes do
+        lakes[i] = {x = math.random(-SHELFX,SHELFX), z = math.random(-SHELFZ,SHELFZ), r = math.random(0,4) > 0}
+    end
 
 	---------------------------------------------
 	-- GENERATION LOOP
@@ -546,7 +554,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				--cubing/squaring flattens out the middle range,
 				--for the wave that gives it a flat shelf at sea level.
 				--for the noise it mellows part of it out, so it adds mainly extreme peaks and dips
-				--mup lowers the landscape at the edges (ocean), otherwise the flattening of hieght would lead to endless plains
+				--mup lowers the landscape at the edges (ocean), otherwise the flattening of height would lead to endless plains
 
 				local den_base = (xwav ^ 3) + mup + ((n_terr ^2) * whs)
 
@@ -562,11 +570,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				--soft sandstone... a good enough stand in for easily erobable rocks
 				--creates regions of soft rock on top of the base layer in lowlands
 
-				--denisty
+				--density
 				local den_soft = (den_base*1.5) + ((n_terr2 ^3)*0.5) -xtgrad
 				--threshold
 				local t_soft = 0.03*y -1.5
-
 
 
 				------------------------------------
@@ -586,7 +593,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local den_sedi = (den_allu*1.1)
 				--threshold
 				local t_sedi = 0.057*y - 3.2
-
 
 				-------------------------------------
 				--Checks
@@ -681,13 +687,45 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					end
 
 					----------------------------------
+					--Random lakes
+					for n = 0, num_lakes do
+	    				local laked = 25 + ((20 * n_terr) + (8 * n_terr2))
+	    				local laker = (140 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(55 + (5 * n_terr2))))
+	    				if x < lakes[n].x + laker and x > lakes[n].x - laker
+						and z < lakes[n].z + laker and z > lakes[n].z - laker
+						and t_base > den_base - laked then
+						    basin = true
+						end
+
+						--Rivers draining them
+						if lakes[n].r then
+                            local channel = (40 +(n_terr2*30))*math.cos(xab/36)
+        					local w = (16 + (n_terr2*7) + (10*xtgrad)) * (1 + (y/(14 - (3*xtgrad))))
+        					if z <= lakes[n].z + channel + w
+        					and z >= lakes[n].z + channel - w
+        					and x > lakes[n].x then
+        						basin = true
+        					end
+						end
+					end
+
+                    ----------------------------------
+                    --A river running out of the caldera in some direction
+                    local cx = (n_terr2*30)*math.cos(xab/42)
+                    local cz = (n_terr*30)*math.cos(xab/21)
+                    local w = (22 + (n_terr2*9) + (10*xtgrad)) * (1 + (y/(12 - (3*xtgrad))))
+                    if x <= cx + w and x >= cx - w and z <= cz + w and z >= cz - w then
+                        basin = true
+                    end
+
+--[[					----------------------------------
 					--a river running bisecting the land East/west
 					local channel = (50 +(n_terr2*30))*math.cos(xab/42)
 					local w = (22 + (n_terr2*9) + (10*xtgrad)) * (1 + (y/(12 - (3*xtgrad))))
 					if z <= channel + w and z >= channel - w then
 						basin = true
 					end
-
+                    
 					-----------------------------------
 					--Mirror lake
 					--gives four lakes.
@@ -709,7 +747,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					and xab > 5000 then
 						basin = true
 					end
-
+--]]
 					-----------------------------------
 					--the following we don't want in basins
 					--caves... bc they would displace water.
@@ -1396,7 +1434,7 @@ end)
 
 --Start on top of the island
 function spawnplayer(player)
-	local pos = {x = 0, y = 30, z = 0}
+    local pos = {x = 0, y = 30, z = 0}
 	player:setpos(pos)
 	-- Get the inventory of the player
 	local inventory = player:get_inventory()
@@ -1405,7 +1443,7 @@ function spawnplayer(player)
 	inventory:add_item("main", "default:pick_steel")
 	inventory:add_item("main", "default:torch 10")
 	inventory:add_item("main", "default:ladder 20")
-	inventory:add_item("main", "default:apple 5")]]
+	inventory:add_item("main", "default:apple 5")--]]
 	inventory:add_item("main", "boats:boat")
 
 end
