@@ -402,7 +402,7 @@ local data = {}
 local numlakes = nil
 local lakes = nil
 
-minetest.register_on_generated(function(minp, maxp, seed)
+table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
   math.randomseed(seed)
 	--------------------------------
 	--don't do out of bounds!
@@ -1426,7 +1426,7 @@ end
 	print ("[mg_tectonic] Mapchunk generation time " .. chugent .. " ms")
 
 --End of Generation
-end)
+end))
 
 --===============================================================
 
