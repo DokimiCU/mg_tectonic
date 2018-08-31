@@ -399,6 +399,9 @@ local data = {}
 --=============================================================================
 -- GENERATION
 
+local numlakes = nil
+local lakes = nil
+
 minetest.register_on_generated(function(minp, maxp, seed)
   math.randomseed(seed)
 	--------------------------------
@@ -471,12 +474,14 @@ minetest.register_on_generated(function(minp, maxp, seed)
     -- some things need to be random, but stay constant throughout the loop
     
     -- number of lakes
-    local num_lakes = math.random(0,20)
-    local lakes = {}
-    for i = 0, num_lakes do
-        lakes[i] = {x = math.random(-SHELFX,SHELFX), z = math.random(-SHELFZ,SHELFZ), r = math.random(0,4) > 0}
+    if lakes == nil then
+        num_lakes = math.random(0,20)
+        lakes = {}
+        for i = 0, num_lakes do
+            lakes[i] = {x = math.random(-SHELFX,SHELFX), z = math.random(-SHELFZ,SHELFZ), r = math.random(0,4) > 0}
+        end
     end
-
+    
 	---------------------------------------------
 	-- GENERATION LOOP
 
