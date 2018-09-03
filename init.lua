@@ -172,7 +172,13 @@ end
 
 ------------------------------
 --Climate Calculations.
-local function climate(x, z, y, n_terr, n_terr2)
+function climate(x, z, y, n_terr, n_terr2)
+	if n_terr == nil then -- So it can be used outside of the loop
+		n_terr = nobj_terr_i:get2d({x=x,y=z})
+	end
+	if n_terr2 == nil then
+		n_terr2 = nobj_terr2_i:get2d({x = x, y = z})
+	end
 	--east = + x, west = - x, south = -z, n = + z
 	--Climate is decided by:
 	-- -Ranges: rains come from the west (-x), rise over the ranges dumping cooling rain, descending hot and dry (east +x)
@@ -229,6 +235,17 @@ local function climate(x, z, y, n_terr, n_terr2)
 		hum = hum + (hum*0.05)
 	end
 
+	
+
+	if numlakes ~= nil and numlakes ~= 0 then
+		for i = 0, numlakes do
+			laker = (180 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(55 + (5 * n_terr2))))
+			if x < lakes[n].x + laker and x > lakes[n].x - laker
+			and z < lakes[n].z + laker and z > lakes[n].z - laker then
+				hum = hum + 0.01 * (math.abs(x - lakes[n].x) + math.abs(z - lakes[n].z))
+			end
+		end
+	end
 	hum = hum + math.random(-4, 4)
 
 return temp, hum
@@ -383,6 +400,9 @@ local nobj_terrain2 = nil
 local nobj_cave = nil
 local nobj_cave2 = nil
 local nobj_strata = nil
+-- For getting individual n_terr values
+nobj_terr_i = nil
+nobj_terr2_i = nil
 
 -- Localise noise buffer table outside the loop, to be re-used for all
 -- mapchunks, therefore minimising memory use.
@@ -395,6 +415,8 @@ local nvals_strata = {}
 -- Localise data buffer table outside the loop, to be re-used for all
 -- mapchunks, therefore minimising memory use.
 local data = {}
+-- param2 data
+local data2 = {}
 
 --=============================================================================
 -- GENERATION
@@ -446,7 +468,8 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 	nobj_cave = nobj_cave or minetest.get_perlin_map(np_cave, chulen)
 	nobj_cave2 = nobj_cave2 or minetest.get_perlin_map(np_cave2, chulen)
 	nobj_strata = nobj_strata or minetest.get_perlin_map(np_strata, chulen)
-
+	nobj_terr_i = nobj_terr_i or minetest.get_perlin(np_terrain.seed, np_terrain.octaves, np_terrain.persist, np_terrain.scale)
+	nobj_terr2_i = nobj_terr_i or minetest.get_perlin(np_terrain2.seed, np_terrain2.octaves, np_terrain2.persist, np_terrain2.scale)
 
 	-- Create a flat array of noise values from the perlin map, with the
 	-- minimum point being 'minp'.
@@ -470,6 +493,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 	-- Get the content ID data from the voxelmanip in the form of a flat array.
 	-- Set the buffer parameter to use and reuse 'data' for this.
 	vm:get_data(data)
+	vm:get_param2_data(data2)
 
     -- some things need to be random, but stay constant throughout the loop
     
@@ -1384,7 +1408,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						 local pos = {x = x, y = y, z = z}
 
 						 --call the api... this will create plant
-							 mgtec.choose_generate_plant(conditions, pos, data, area, vi)
+							 mgtec.choose_generate_plant(conditions, pos, data, data2, area, vi)
 
 					 --done with plantables
 					 end
@@ -1413,6 +1437,7 @@ end
 
 	-- After processing, write content ID data back to the voxelmanip.
 	vm:set_data(data)
+	vm:set_param2_data(data2)
 	-- Calculate lighting for what has been created.
 	vm:calc_lighting()
 	-- Write what has been created to the world.
