@@ -424,6 +424,20 @@ local data2 = {}
 local numlakes = nil
 local lakes = nil
 
+minetest.register_on_mapgen_init(function(mapgen_params)
+	math.randomseed(mapgen_params.seed)
+	-- some things need to be random, but stay constant throughout the loop
+    
+	-- number of lakes
+	if lakes == nil then
+		num_lakes = math.random(0,20)
+		lakes = {}
+		for i = 0, num_lakes do
+		    lakes[i] = {x = math.random(-SHELFX,SHELFX), z = math.random(-SHELFZ,SHELFZ), r = math.random(0,4) > 0}
+		end
+	end
+end)
+
 table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
   math.randomseed(seed)
 	--------------------------------
@@ -494,17 +508,6 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 	-- Set the buffer parameter to use and reuse 'data' for this.
 	vm:get_data(data)
 	vm:get_param2_data(data2)
-
-    -- some things need to be random, but stay constant throughout the loop
-    
-    -- number of lakes
-    if lakes == nil then
-        num_lakes = math.random(0,20)
-        lakes = {}
-        for i = 0, num_lakes do
-            lakes[i] = {x = math.random(-SHELFX,SHELFX), z = math.random(-SHELFZ,SHELFZ), r = math.random(0,4) > 0}
-        end
-    end
     
 	---------------------------------------------
 	-- GENERATION LOOP
@@ -714,6 +717,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							end
 						end
 					end
+
 
 					----------------------------------
 					--Random lakes
