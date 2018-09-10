@@ -8,7 +8,7 @@ Many syntaxes are possible, with their default behaviour (see *grow*):
 * `nodes = {"default:grass_1", "default:grass_2", "default:grass_3", "default:grass_4", "default:grass_5"}`: generate one grass node, randomly chosen between the 5 nodes.
 * `nodes = {"default:grass_1", "default:grass_2", "default:grass_3", "default:grass_4", "default:grass_5, n=3"}`: generate 3 grass nodes vertically (my example is a bit sillyâ€¦), randomly chosen between the 5 nodes (chosen once, not 3 times).
 --anything more needs a grow function
-]]
+--]]
 
 ----------------------------------------------------
 --Notes on species set up:
@@ -149,7 +149,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 16 and t.humidity > 16 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = 1--math.floor(12 + 1 * rand)
 		local radius = 3 + 1 * rand
@@ -171,7 +171,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 33 and t.humidity > 12 and (t.nodu ==  c_dirtgr or t.nodu ==  c_dirtdgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = 1--math.floor(12 + 1 * rand)
 		local radius = 3 + 1 * rand
@@ -339,7 +339,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 67 and t.humidity > 67 and t.nodu == c_dirtlit
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(16 + 4 * rand)
 		local radius = 3 + 1 * rand
@@ -376,7 +376,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 83 and t.humidity > 83 and t.nodu == c_dirtlit
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
@@ -412,7 +412,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 83 and t.humidity > 67 and t.humidity < 83 and t.nodu == c_dirtlit
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
@@ -450,7 +450,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 67 and t.temp < 83 and t.humidity > 83 and t.nodu == c_dirtlit
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(17 + 3 * rand)
 		local radius = 3 + 1 * rand
@@ -489,7 +489,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 67 and t.temp < 83 and t.humidity > 67 and t.humidity < 83 and t.nodu == c_dirtlit
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(17 + 3 * rand)
 		local radius = 3 + 1 * rand
@@ -527,7 +527,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 67 and t.humidity > 33 and t.humidity < 67 and (t.nodu ==  c_dirtgr or t.nodu ==  c_dirtdgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(17 + 3 * rand)
 		local radius = 3 + 1 * rand
@@ -562,7 +562,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 83 and t.humidity > 50 and t.humidity < 67 and t.nodu ==  c_dirtgr
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
@@ -597,7 +597,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 83 and t.humidity > 33 and t.humidity < 50 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(14 + 6 * rand)
 		local radius = 3 + 1 * rand
@@ -634,7 +634,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 67 and t.temp < 83 and t.humidity > 50 and t.humidity < 67 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
@@ -673,7 +673,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 67 and t.temp < 83 and t.humidity > 33 and t.humidity < 50 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(15 + 5 * rand)
 		local radius = 3 + 1 * rand
@@ -732,7 +732,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 83 and t.humidity > 16 and t.humidity < 33 and t.nodu == c_dsand
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(3 + 2 * rand)
 		local radius = 2 + 1 * rand
@@ -783,7 +783,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 67 and t.temp < 83 and t.humidity > 16 and t.humidity < 33 and t.nodu == c_dsand
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(5 + 3 * rand)
 		local radius = 3 + 1 * rand
@@ -839,7 +839,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 33 and t.temp < 67 and t.humidity > 67 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(6 + 3 * rand)
 		local radius = 3 + 1 * rand
@@ -877,7 +877,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 50 and t.temp < 67 and t.humidity > 83 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
@@ -914,7 +914,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 50 and t.temp < 67 and t.humidity > 67 and t.humidity < 83 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
@@ -949,7 +949,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 33 and t.temp < 50 and t.humidity > 83 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(16 + 4 * rand)
 		local radius = 3 + 1 * rand
@@ -987,7 +987,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 33 and t.temp < 50 and t.humidity > 67 and t.humidity < 83 and t.nodu == c_dirtgr
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(18 + 2 * rand)
 		local radius = 3 + 1 * rand
@@ -1027,7 +1027,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 33 and t.temp < 67 and t.humidity > 33 and t.humidity < 67 and t.nodu == c_dirtgr
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(8 + 4 * rand)
 		local radius = 3 + 1 * rand
@@ -1063,7 +1063,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 50 and t.temp < 67 and t.humidity > 50 and t.humidity < 67 and t.nodu == c_dirtgr
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(16 + 4 * rand)
 		local radius = 3 + 1 * rand
@@ -1101,7 +1101,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 50 and t.temp < 67 and t.humidity > 33 and t.humidity < 50 and t.nodu == c_dirtgr
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(12 + 5 * rand)
 		local radius = 3 + 1 * rand
@@ -1138,7 +1138,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 33 and t.temp < 50 and t.humidity > 50 and t.humidity < 67 and t.nodu == c_dirtgr
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(16 + 4 * rand)
 		local radius = 3 + 1 * rand
@@ -1173,7 +1173,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 33 and t.temp < 50 and t.humidity > 33 and t.humidity < 50 and t.nodu == c_dirtgr
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(12 + 6 * rand)
 		local radius = 3 + 1 * rand
@@ -1229,7 +1229,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 50 and t.temp < 67 and t.humidity > 16 and t.humidity < 33 and (t.nodu == c_dirtgr or t.nodu == c_dirtdgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(10 + 4 * rand)
 		local radius = 3 + 1 * rand
@@ -1263,7 +1263,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 50 and t.temp < 67 and t.humidity < 16 and (t.nodu == c_dirtgr or t.nodu == c_dirtdgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(15 + 4 * rand)
 		local radius = 3 + 1 * rand
@@ -1299,7 +1299,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 33 and t.temp < 50 and t.humidity > 16 and t.humidity < 33 and (t.nodu == c_dirtgr or t.nodu == c_dirtdgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(10 + 4 * rand)
 		local radius = 3 + 1 * rand
@@ -1356,7 +1356,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp < 33 and t.humidity > 67 and (t.nodu == c_dirtsno or t.nodu == c_dirtgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(6 + 2 * rand)
 		local radius = 2 + 1 * rand
@@ -1389,7 +1389,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 16 and t.temp < 33 and t.humidity > 83 and t.nodu == c_dirtsno
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(6 + 4 * rand)
 		local radius = 3 + 1 * rand
@@ -1422,7 +1422,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 16 and t.temp < 33 and t.humidity > 67 and t.humidity < 83 and t.nodu == c_dirtgsno
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(6 + 2 * rand)
 		local radius = 3 + 1 * rand
@@ -1503,7 +1503,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 16 and t.temp < 33 and t.humidity > 50 and t.humidity < 67 and t.nodu == c_dirtsno
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(14 + 2 * rand)
 		local radius = 3 + 1 * rand
@@ -1536,7 +1536,7 @@ mgtec.register_plant({
 	check = function(t, pos)
 		return t.temp > 16 and t.temp < 33 and t.humidity > 33 and t.humidity < 50 and (t.nodu == c_dirtsno or t.nodu == c_dirtgr)
 	end,
-	grow = function(nodes, pos, data, area)
+	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
 		local height = math.floor(14 + 2 * rand)
 		local radius = 3 + 1 * rand

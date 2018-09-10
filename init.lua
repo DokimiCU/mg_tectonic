@@ -101,7 +101,7 @@ local function ore(ab_stra, y, ORET, ybig, n_strata, data, vi, OREID)
 	local ysmax_dia = -0.5 * TSTRA
 	local ysmin_dia = -0.83 * TSTRA
 	local ys_mese2 = -0.83 * TSTRA
-	]]
+	--]]
 
 
 	--threshold adjusted with depth
@@ -172,7 +172,13 @@ end
 
 ------------------------------
 --Climate Calculations.
-local function climate(x, z, y, n_terr, n_terr2)
+function climate(x, z, y, n_terr, n_terr2)
+	if n_terr == nil then -- So it can be used outside of the loop
+		n_terr = nobj_terr_i:get2d({x=x,y=z})
+	end
+	if n_terr2 == nil then
+		n_terr2 = nobj_terr2_i:get2d({x = x, y = z})
+	end
 	--east = + x, west = - x, south = -z, n = + z
 	--Climate is decided by:
 	-- -Ranges: rains come from the west (-x), rise over the ranges dumping cooling rain, descending hot and dry (east +x)
@@ -189,7 +195,7 @@ local function climate(x, z, y, n_terr, n_terr2)
 	local temp_x = 50 - blend
 
 	-- Easterners?
-	if x > 0 then
+	if x > 0 + (n_terr * 400) then --offset east-west border with some noise
 		-- linear decrease, intercept at 100 (don't use in -x)
 		temp_x = (-0.0017*x) + 100 - blend
 	end
@@ -215,10 +221,10 @@ local function climate(x, z, y, n_terr, n_terr2)
 
 	----poitive, east coast. Dry inland
 	--linear increase,
-	if x > 0 then
+	if x > 0 + (n_terr * 400) then
 		hum = (0.002*x) + blend
 	--increasing humid from far x to x= 0,(rain shadow)
-	elseif x <= 0 then  --negative , west coast. Wet inland
+	else  --negative , west coast. Wet inland
 		--linear increase,
 		hum = (0.0012*x) + 100 + blend
 	end
@@ -229,6 +235,17 @@ local function climate(x, z, y, n_terr, n_terr2)
 		hum = hum + (hum*0.05)
 	end
 
+	
+
+	if numlakes ~= nil and numlakes ~= 0 then
+		for i = 0, numlakes do
+			laker = (180 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(55 + (5 * n_terr2))))
+			if x < lakes[n].x + laker and x > lakes[n].x - laker
+			and z < lakes[n].z + laker and z > lakes[n].z - laker then
+				hum = hum + 0.01 * (math.abs(x - lakes[n].x) + math.abs(z - lakes[n].z))
+			end
+		end
+	end
 	hum = hum + math.random(-4, 4)
 
 return temp, hum
@@ -383,6 +400,9 @@ local nobj_terrain2 = nil
 local nobj_cave = nil
 local nobj_cave2 = nil
 local nobj_strata = nil
+-- For getting individual n_terr values
+nobj_terr_i = nil
+nobj_terr2_i = nil
 
 -- Localise noise buffer table outside the loop, to be re-used for all
 -- mapchunks, therefore minimising memory use.
@@ -395,12 +415,31 @@ local nvals_strata = {}
 -- Localise data buffer table outside the loop, to be re-used for all
 -- mapchunks, therefore minimising memory use.
 local data = {}
+-- param2 data
+local data2 = {}
 
 --=============================================================================
 -- GENERATION
 
-minetest.register_on_generated(function(minp, maxp, seed)
+local numlakes = nil
+local lakes = nil
 
+minetest.register_on_mapgen_init(function(mapgen_params)
+	math.randomseed(mapgen_params.seed)
+	-- some things need to be random, but stay constant throughout the loop
+    
+	-- number of lakes
+	if lakes == nil then
+		num_lakes = math.random(0,20)
+		lakes = {}
+		for i = 0, num_lakes do
+		    lakes[i] = {x = math.random(-SHELFX,SHELFX), z = math.random(-SHELFZ,SHELFZ), r = math.random(0,4) > 0}
+		end
+	end
+end)
+
+table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
+  math.randomseed(seed)
 	--------------------------------
 	--don't do out of bounds!
 	--world is a square, ymin will do for z and x too.
@@ -443,7 +482,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	nobj_cave = nobj_cave or minetest.get_perlin_map(np_cave, chulen)
 	nobj_cave2 = nobj_cave2 or minetest.get_perlin_map(np_cave2, chulen)
 	nobj_strata = nobj_strata or minetest.get_perlin_map(np_strata, chulen)
-
+	nobj_terr_i = nobj_terr_i or minetest.get_perlin(np_terrain.seed, np_terrain.octaves, np_terrain.persist, np_terrain.scale)
+	nobj_terr2_i = nobj_terr_i or minetest.get_perlin(np_terrain2.seed, np_terrain2.octaves, np_terrain2.persist, np_terrain2.scale)
 
 	-- Create a flat array of noise values from the perlin map, with the
 	-- minimum point being 'minp'.
@@ -467,8 +507,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	-- Get the content ID data from the voxelmanip in the form of a flat array.
 	-- Set the buffer parameter to use and reuse 'data' for this.
 	vm:get_data(data)
-
-
+	vm:get_param2_data(data2)
+    
 	---------------------------------------------
 	-- GENERATION LOOP
 
@@ -546,7 +586,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				--cubing/squaring flattens out the middle range,
 				--for the wave that gives it a flat shelf at sea level.
 				--for the noise it mellows part of it out, so it adds mainly extreme peaks and dips
-				--mup lowers the landscape at the edges (ocean), otherwise the flattening of hieght would lead to endless plains
+				--mup lowers the landscape at the edges (ocean), otherwise the flattening of height would lead to endless plains
 
 				local den_base = (xwav ^ 3) + mup + ((n_terr ^2) * whs)
 
@@ -562,11 +602,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				--soft sandstone... a good enough stand in for easily erobable rocks
 				--creates regions of soft rock on top of the base layer in lowlands
 
-				--denisty
+				--density
 				local den_soft = (den_base*1.5) + ((n_terr2 ^3)*0.5) -xtgrad
 				--threshold
 				local t_soft = 0.03*y -1.5
-
 
 
 				------------------------------------
@@ -586,7 +625,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local den_sedi = (den_allu*1.1)
 				--threshold
 				local t_sedi = 0.057*y - 3.2
-
 
 				-------------------------------------
 				--Checks
@@ -680,14 +718,47 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						end
 					end
 
+
 					----------------------------------
+					--Random lakes
+					for n = 0, num_lakes do
+	    				local laked = 25 + ((20 * n_terr) + (8 * n_terr2))
+	    				local laker = (140 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(55 + (5 * n_terr2))))
+	    				if x < lakes[n].x + laker and x > lakes[n].x - laker
+						and z < lakes[n].z + laker and z > lakes[n].z - laker
+						and t_base > den_base - laked then
+						    basin = true
+						end
+
+						--Rivers draining them
+						if lakes[n].r then
+                            local channel = (40 +(n_terr2*30))*math.cos(xab/36)
+        					local w = (16 + (n_terr2*7) + (10*xtgrad)) * (1 + (y/(14 - (3*xtgrad))))
+        					if z <= lakes[n].z + channel + w
+        					and z >= lakes[n].z + channel - w
+        					and x > lakes[n].x then
+        						basin = true
+        					end
+						end
+					end
+
+                    ----------------------------------
+                    --A river running out of the caldera in some direction
+                    local cx = (n_terr2*30)*math.cos(xab/42)
+                    local cz = (n_terr*30)*math.cos(xab/21)
+                    local w = (22 + (n_terr2*9) + (10*xtgrad)) * (1 + (y/(12 - (3*xtgrad))))
+                    if x <= cx + w and x >= cx - w and z <= cz + w and z >= cz - w then
+                        basin = true
+                    end
+
+--[[					----------------------------------
 					--a river running bisecting the land East/west
 					local channel = (50 +(n_terr2*30))*math.cos(xab/42)
 					local w = (22 + (n_terr2*9) + (10*xtgrad)) * (1 + (y/(12 - (3*xtgrad))))
 					if z <= channel + w and z >= channel - w then
 						basin = true
 					end
-
+                    
 					-----------------------------------
 					--Mirror lake
 					--gives four lakes.
@@ -709,7 +780,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					and xab > 5000 then
 						basin = true
 					end
-
+--]]
 					-----------------------------------
 					--the following we don't want in basins
 					--caves... bc they would displace water.
@@ -1341,7 +1412,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						 local pos = {x = x, y = y, z = z}
 
 						 --call the api... this will create plant
-							 mgtec.choose_generate_plant(conditions, pos, data, area, vi)
+							 mgtec.choose_generate_plant(conditions, pos, data, data2, area, vi)
 
 					 --done with plantables
 					 end
@@ -1370,6 +1441,7 @@ end
 
 	-- After processing, write content ID data back to the voxelmanip.
 	vm:set_data(data)
+	vm:set_param2_data(data2)
 	-- Calculate lighting for what has been created.
 	vm:calc_lighting()
 	-- Write what has been created to the world.
@@ -1383,7 +1455,7 @@ end
 	print ("[mg_tectonic] Mapchunk generation time " .. chugent .. " ms")
 
 --End of Generation
-end)
+end))
 
 --===============================================================
 
@@ -1396,7 +1468,7 @@ end)
 
 --Start on top of the island
 function spawnplayer(player)
-	local pos = {x = 0, y = 30, z = 0}
+    local pos = {x = 0, y = 30, z = 0}
 	player:setpos(pos)
 	-- Get the inventory of the player
 	local inventory = player:get_inventory()
@@ -1405,7 +1477,7 @@ function spawnplayer(player)
 	inventory:add_item("main", "default:pick_steel")
 	inventory:add_item("main", "default:torch 10")
 	inventory:add_item("main", "default:ladder 20")
-	inventory:add_item("main", "default:apple 5")]]
+	inventory:add_item("main", "default:apple 5")--]]
 	inventory:add_item("main", "boats:boat")
 
 end
