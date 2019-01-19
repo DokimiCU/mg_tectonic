@@ -1,7 +1,7 @@
 # mg_tectonic
 by Dokimi
 
-Current version 0.1.1
+Current version 0.2
 
 # Map Outline
 A naturalistic mapgen for Minetest, based around mimicking the landscape of a tectonic plate boundary.
@@ -12,11 +12,11 @@ It generates a landmass bounded by oceans, with a mountains running North-South 
 
 Rocks, sediments, and soils are arranged in strata. Ores occur in concentrated deposits. Deep fissures run along the fault lines, go down deep enough and they fill with magma.
 
-The player starts at the centre of the map, on an island in a large caldera. Two rivers drain this lake and provide access through the often impassable terrain. One river leads East into the badlands, the other river heads West into the cloud forests. 
+
 
 
 # How Does This Work?
-The generator uses a modified sine wave to generate the underlying mountains. This creates natural rolling hills progressing to steep mountains. Layers of rock and sediment are then added one after the other, with varying conditions to build up a layered landscape and geology.
+The generator uses a modified cosine wave to generate the underlying mountains. This creates natural rolling hills progressing to steep mountains. Layers of rock and sediment are then added one after the other, with varying conditions to build up a layered landscape and geology.
 
 
 # License:
@@ -31,14 +31,31 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 
 
 # Change Log
+
 0.1:
 
--Initial release.
+- Initial release.
+
 
 0.1.1:
 
--Adjust ocean basins to create lakes, lowland/plateaus, islands.
+- Adjust ocean basins to create lakes, lowland/plateaus, islands.
 
--tweaked tree heights
+- tweaked tree heights
 
--more cave sediments
+- more cave sediments
+
+
+0.2:
+
+- Random lakes and rivers (major contributions by thorn0906)
+
+- Random start position (major contributions by thorn0906)
+
+- Improved compatibility with mods by making climate more accesible (by thorn0906)
+
+- Third biome factor (disturbance) for greater regional variety
+
+- Adjusted landscape shape (larger mountains etc)
+
+- various minor changes and additions (e.g. coral, sea ice)
