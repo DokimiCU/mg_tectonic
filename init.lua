@@ -8,6 +8,7 @@
 --=============================================================================
 --PRELIMINARIES
 mgtec = {}
+local mod_storage = minetest.get_mod_storage()
 
 ---------------------
 --SINGLENODE
@@ -1678,8 +1679,8 @@ end
 function spawnplayer(player,alt)
     local pos = spawnpoint
 		--scatter a little to avoid respawning bug when reusing same place
-		--pos.x = spawnpoint.x + math.random(-15 , 15)
-		--pos.z = spawnpoint.z + math.random(-15, 15)
+		--pos.x = spawnpoint.x + math.random(-500 , 500)
+		--pos.z = spawnpoint.z + math.random(-500, 500)
 
     for i = alt, 0,-1 do
 				alt = i
@@ -1687,25 +1688,41 @@ function spawnplayer(player,alt)
 				minetest.chat_send_player(player:get_player_name(), "Spawning at... x:"..pos.x.." z:"..pos.z .." y:"..pos.y)
         local node, val = get_far_node(pos, player, alt)
         if not val then
-						pos.y = pos.y + 300
+						pos.y = pos.y + 1000
 						player:setpos(pos)
             break
         end
         if node.name ~= "air" then
-            break
+					break
         end
     end
+
 	pos.y = pos.y + 2
 	player:setpos(pos)
+
+	--save location
+	mod_storage:set_int("x", pos.x)
+	mod_storage:set_int("y", pos.y)
+	mod_storage:set_int("z", pos.z)
+
 end
 
 
 
+function savedspawn(player)
+	--get location from storage
+	local spx =  mod_storage:get_int("x")
+	local spy =  mod_storage:get_int("y")
+	local spz =  mod_storage:get_int("z")
+	local pos = {x = spx, y = spy, z = spz}
+
+	minetest.chat_send_player(player:get_player_name(), "Respawning at... x:"..spx.." z:"..spz .." y:"..spy)
+	player:setpos(pos)
+end
 
 
 -----------------------------------------------------------
 minetest.register_on_newplayer(function(player)
-    --spawnpoints[player] = {x = 0, z = 0}
 	spawnplayer(player, 1100)
 
 
@@ -1722,8 +1739,10 @@ minetest.register_on_newplayer(function(player)
   inventory:add_item("main", "farming:seed_cotton")
 end)
 
+
 --this is needed to stop it putting player at 0,0,0...but overrides bed save :-(
---
 minetest.register_on_respawnplayer(function(player)
-			spawnplayer(player, 900)
+			savedspawn(player)
+			--disable default
+			return true
 end)
