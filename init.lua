@@ -476,10 +476,11 @@ minetest.register_on_mapgen_init(function(mapgen_params)
 
 	-- number of lakes
 	if lakes == nil then
-		num_lakes = math.random(7,14)
+		num_lakes = math.random(14,21)
 		lakes = {}
 		for i = 0, num_lakes do
-		    lakes[i] = {x = math.random(-SHELFX,SHELFX), z = math.random(-SHELFZ,SHELFZ), r = math.random(0,4) > 0}
+			--keep back from "shelf" as the coastline is actually much further back
+		    lakes[i] = {x = math.random((-SHELFX + 4000) , (SHELFX - 4000)), z = math.random((-SHELFZ + 4000) , (SHELFZ - 4000)), r = math.random(0,4) > 0}
 		end
 	end
 end)
@@ -1723,7 +1724,7 @@ end
 
 -----------------------------------------------------------
 minetest.register_on_newplayer(function(player)
-	spawnplayer(player, 1100)
+	spawnplayer(player, 1300)
 
 
 	-- Get the inventory of the player
