@@ -706,7 +706,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					local inn_terr2 = 1 - n_terr2
 					local shelfnoi = ((inn_terr + inn_terr + n_terr2)/3) * CONOI -- softens cliffs
 					local shelfsl = (inn_terr*100)*(0.8*y) - (CONOI/2)  --sets slope
-					local shelfsl2 = (inn_terr*50)*(0.8*y) - (CONOI/10)  --sets slope
+					local shelfsl2 = (inn_terr*50)*(0.8*y) - (CONOI/4)  --sets slope
 					local bed1 = -0.013*xab - (SEABED + (n_terr * (SEABED/10)))  --so sea bed is bumpy,deeper with x
 					local bed2 = -0.013*zab - (SEABED + (n_terr2 * (SEABED/10)))  --so sea bed is bumpy,deeper with z
 					--Are we in the right place for oceans?
