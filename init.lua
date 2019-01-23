@@ -210,7 +210,7 @@ function climate(x, z, y, n_terr, n_terr2)
 
 	--Mountain tops ought to be cold!
 	--decreasing temp with hieght...and combine previous two as baseline
-	local temp = (-0.16*y) + ((temp_z + temp_x)/2) - blend
+	local temp = (-0.11*y) + ((temp_z + temp_x)/2) - blend
 
 	--blur edges
 	temp = temp + math.random(-4, 4)
@@ -1471,7 +1471,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								data[vi] = c_dirtsno
 								void = false
 								--dry Forests
-							elseif hum <40 or temp > 99 then
+							elseif hum <25 or temp > 95 then
 								data[vi] = c_dirtdgr
 								void = false
 							--unfrozen
