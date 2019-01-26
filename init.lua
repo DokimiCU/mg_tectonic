@@ -55,7 +55,7 @@ local XRS = 650 --150
 local SHELFX = 28000
 local SHELFZ = 28000
 --How deep are the oceans?
-local SEABED = -15000
+local SEABED = -15000--128
 --Strength of noise on continental shelf boundaries lines
 local CONOI = 2000
 
@@ -1228,12 +1228,17 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						or nodu == c_sandstone
 						or nodu == c_sandstone2
 						or nodu == c_sandstone3  then
-							--gravel in disturbed areas
-							if distu > 80 then
-								data[vi] = SEDID.c_gravel
-								void = false
+							-- in disturbed areas
+							if distu > 70 then
+								if distu > 99 and y < 1000 and y > MAXMAG then
+									swamp(data, vi, 40, c_obsid, MISCID.c_lava)
+									void = false
+								else
+									data[vi] = SEDID.c_gravel
+									void = false
+								end
 							--water seep in stable points
-							elseif distu < 30 then
+						  elseif distu < 40 then
 								if hum > 60 then
 									swamp(data, vi, 50, SEDID.c_clay, MISCID.c_river)
 									void = false
