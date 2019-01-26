@@ -55,7 +55,7 @@ local XRS = 650 --150
 local SHELFX = 28000
 local SHELFZ = 28000
 --How deep are the oceans?
-local SEABED = -128
+local SEABED = -15000
 --Strength of noise on continental shelf boundaries lines
 local CONOI = 2000
 
