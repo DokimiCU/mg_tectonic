@@ -55,7 +55,7 @@ local XRS = 650 --150
 local SHELFX = 28000
 local SHELFZ = 28000
 --How deep are the oceans?
-local SEABED = -15000--128
+local SEABED = -15000
 --Strength of noise on continental shelf boundaries lines
 local CONOI = 2000
 
@@ -210,7 +210,7 @@ function climate(x, z, y, n_terr, n_terr2)
 
 	--Mountain tops ought to be cold!
 	--decreasing temp with hieght...and combine previous two as baseline
-	local temp = (-0.11*y) + ((temp_z + temp_x)/2) - blend
+	local temp = (-0.095*y) + ((temp_z + temp_x)/2) - blend
 
 	--blur edges
 	temp = temp + math.random(-4, 4)
@@ -237,11 +237,11 @@ function climate(x, z, y, n_terr, n_terr2)
 	if y < 15 + math.random(-4, 4) or y > 120 + math.random(-5, 5) then
 		hum = hum + (hum*0.05)
 		--snow capped peaks...
-		if y > 500 + math.random(-5, 5) then
+		if y > 600 + math.random(-5, 5) then
 			hum = hum * 50
-		elseif y > 400 + math.random(-5, 5) then
+		elseif y > 500 + math.random(-5, 5) then
 			hum = hum * 10
-		elseif y > 250 + math.random(-5, 5) then
+		elseif y > 400 + math.random(-5, 5) then
 			hum = hum + (hum*0.25)
 		end
 	end
@@ -1230,7 +1230,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						or nodu == c_sandstone3  then
 							-- in disturbed areas
 							if distu > 70 then
-								if distu > 99 and y < 1000 and y > MAXMAG then
+								if distu > 99 and y > MAXMAG then
 									swamp(data, vi, 40, c_obsid, MISCID.c_lava)
 									void = false
 								else
