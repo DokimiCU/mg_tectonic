@@ -52,12 +52,12 @@ local MAXMAG = -15000
 local XRS = 650 --150
 
 --Where does the continental shelf end?
-local SHELFX = 22000
-local SHELFZ = 20000
+local SHELFX = 28000
+local SHELFZ = 28000
 --How deep are the oceans?
-local SEABED = -296
+local SEABED = -128
 --Strength of noise on continental shelf boundaries lines
-local CONOI = 10000
+local CONOI = 2000
 
 --Cave size.
 --Base cave threshold for fissures
@@ -469,18 +469,18 @@ local spawnpoint = {x = 0, z = 0}
 
 minetest.register_on_mapgen_init(function(mapgen_params)
 	math.randomseed(mapgen_params.seed)
-  spawnpoint = {x = math.random(-SHELFX , SHELFX), z = math.random(-SHELFZ, SHELFZ)}
+  spawnpoint = {x = math.random(-18000, 18000), z = math.random(-18000, 18000)}
 
 
 	-- some things need to be random, but stay constant throughout the loop
 
 	-- number of lakes
 	if lakes == nil then
-		num_lakes = math.random(14,21)
+		num_lakes = math.random(21,28)
 		lakes = {}
 		for i = 0, num_lakes do
 			--keep back from "shelf" as the coastline is actually much further back
-		    lakes[i] = {x = math.random((-SHELFX + 4000) , (SHELFX - 4000)), z = math.random((-SHELFZ + 4000) , (SHELFZ - 4000)), r = math.random(0,4) > 0}
+		    lakes[i] = {x = math.random(-10000,10000), z = math.random(-12000,12000), r = math.random(0,5) < 2}
 		end
 	end
 end)
@@ -651,9 +651,9 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--creates regions of soft rock on top of the base layer in lowlands
 
 				--density
-					local den_soft = den_base + (n_terr2 ^2) -(xtgrad*0.9)
+					local den_soft = (den_base*1.01) + (n_terr2 ^2) -(xtgrad*0.5)
 					--threshold
-					local t_soft = 0.03*y
+					local t_soft = 0.02*y
 
 
 					------------------------------------
@@ -703,17 +703,13 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 					local zab = math.abs(z)
 
-					local inn_terr = 1 - n_terr
-					local inn_terr2 = 1 - n_terr2
-					local shelfnoi = ((inn_terr + inn_terr + n_terr2)/3) * CONOI -- softens cliffs
-					local shelfsl = (inn_terr*100)*(0.8*y) - (CONOI/2)  --sets slope
-					local shelfsl2 = (inn_terr*50)*(0.8*y) - (CONOI/4)  --sets slope
-					local bed1 = -0.013*xab - (SEABED + (n_terr * (SEABED/10)))  --so sea bed is bumpy,deeper with x
-					local bed2 = -0.013*zab - (SEABED + (n_terr2 * (SEABED/10)))  --so sea bed is bumpy,deeper with z
+					local shelfnoi = (n_terr * n_terr2) * CONOI -- softens cliffs
+					local shelfsl = (math.abs((n_terr*10) + (n_terr2*2))) * (0.3*y)*20  --sets slope
+					local bed = SEABED + ((n_terr^2)*SEABED)
 					--Are we in the right place for oceans?
-					if ((xab > (SHELFX + shelfnoi) - shelfsl
-					or zab > (SHELFZ + (shelfnoi*1.5)) - shelfsl2))
-					and (y >= bed1 or y >= bed2)  then --avoids  infinitely deepening oceans
+					if (xab > ((SHELFX + shelfnoi) - shelfsl)
+					or zab > ((SHELFZ + shelfnoi) - shelfsl))
+					and y >= bed  then --avoids  infinitely deepening oceans
 						basin = true
 					end
 
@@ -1471,7 +1467,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								data[vi] = c_dirtsno
 								void = false
 								--dry Forests
-							elseif hum <25 or temp > 95 then
+							elseif hum <25 or temp > 99 then
 								data[vi] = c_dirtdgr
 								void = false
 							--unfrozen
