@@ -1246,6 +1246,10 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 									swamp(data, vi, 150, SEDID.c_gravel, MISCID.c_river)
 									void = false
 								end
+							--ice in cold..
+						  elseif temp < 3 then
+								data[vi] = c_ice
+								void = false
 							-- random sand
 							elseif n_terr2 > 0 then
 								data[vi] = SEDID.c_sand2
