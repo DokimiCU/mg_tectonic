@@ -46,9 +46,9 @@ local arid = 10
 
 --add on to the above to create a range
 --tolerance
-local htol = 30
-local mtol = 20
-local ltol = 10
+local htol = 29
+local mtol = 19
+local ltol = 14
 
 --Disturbance
 -- >50 Disturbed
@@ -130,6 +130,7 @@ local c_dirtgr = minetest.get_content_id("default:dirt_with_grass")
 local c_dirtdgr = minetest.get_content_id("default:dirt_with_dry_grass")
 local c_dirtsno = minetest.get_content_id("default:dirt_with_snow")
 local c_dirtlit = minetest.get_content_id("default:dirt_with_rainforest_litter")
+local c_dirtconlit = minetest.get_content_id("default:dirt_with_coniferous_litter")
 local c_snowbl = minetest.get_content_id("default:snowblock")
 local c_dsand = minetest.get_content_id("default:desert_sand")
 --water
@@ -141,7 +142,7 @@ local c_river = minetest.get_content_id("default:river_water_source")
 --Tree densities
 --Dense jungles
 local juncov = 0.1
-local junden = 0.02
+local junden = 0.03
 --Woodlands
 local wodcov = juncov/3
 local woden = wodcov/4
@@ -174,7 +175,7 @@ for i = 1, 5 do
 		density = 0.045,
 		priority = 64,
 		check = function(t, pos)
-			return t.temp > 18 and t.humidity > 45 and t.disturb > 10 and (t.nodu ==  c_dirtgr or t.nodu ==  c_dirtdgr or t.nodu == c_dirtlit)
+			return t.temp > 18 and t.humidity > 45 and t.disturb > 10 and (t.nodu ==  c_dirtgr or t.nodu ==  c_dirtdgr or t.nodu == c_dirtlit or t.nodu == c_dirtconlit)
 		end,
 	})
 end
@@ -188,7 +189,35 @@ for i = 1, 5 do
 		density = 0.045,
 		priority = 63,
 		check = function(t, pos)
-			return t.temp > 18 and t.humidity > 10 and t.humidity < 55 and t.disturb > 10 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_dsand or t.nodu == c_sand or t.nodu == c_gravel or t.nodu == c_dirtlit)
+			return t.temp > 18 and t.humidity > 10 and t.humidity < 55 and t.disturb > 10 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_dsand or t.nodu == c_dirtlit or t.nodu == c_dirtconlit)
+		end,
+	})
+end
+
+-- Marram Grass
+--
+for i = 1, 3 do
+	mgtec.register_plant({
+		nodes = { "default:marram_grass_"..i},
+		cover = 0.05,
+		density = 0.045,
+		priority = 63,
+		check = function(t, pos)
+			return t.temp > 25 and t.humidity > 20 and t.humidity < 90 and t.disturb < 60 and (t.nodu == c_sand) and pos.y < 3 and pos.y > 0
+		end,
+	})
+end
+
+-- Fern
+-- low disturbance, wet
+for i = 1, 3 do
+	mgtec.register_plant({
+		nodes = { "default:fern_"..i},
+		cover = 0.05,
+		density = 0.045,
+		priority = 63,
+		check = function(t, pos)
+			return t.temp > 45 and t.humidity > 50 and t.disturb < 30 and (t.nodu == c_dirtgr or t.nodu == c_dirtlit or t.nodu == c_dirtconlit)
 		end,
 	})
 end
@@ -202,7 +231,7 @@ mgtec.register_plant({
 	density = 0.005,
 	priority = 62,
 	check = function(t, pos)
-		return t.nodu == c_dsand or t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_sand or t.nodu == c_dirtsno or t.nodu == c_gravel
+		return t.nodu == c_dsand or t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_sand or t.nodu == c_dirtsno or t.nodu == c_gravel or t.nodu == c_dirtconlit
 	end,
 })
 
@@ -223,7 +252,7 @@ mgtec.register_plant({
 	density = woden,
 	priority = 69,
 	check = function(t, pos)
-		return t.temp > 15 and t.temp < 65 and t.humidity > 25 and t.disturb > 20 and t.disturb < 85 and (t.nodu == c_gravel or t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno)
+		return t.temp > 15 and t.temp < 65 and t.humidity > 25 and t.disturb > 20 and t.disturb < 85 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -246,7 +275,57 @@ mgtec.register_plant({
 	density = woden,
 	priority = 68,
 	check = function(t, pos)
-		return t.temp > 55 and t.humidity > 15 and t.humidity < 80 and t.disturb > 28 and t.disturb < 90 and (t.nodu ==  c_dirtgr or t.nodu ==  c_dirtdgr or t.nodu == c_dirtlit)
+		return t.temp > 55 and t.humidity > 15 and t.humidity < 80 and t.disturb > 28 and t.disturb < 90 and (t.nodu ==  c_dirtgr or t.nodu ==  c_dirtdgr or t.nodu == c_dirtlit or t.nodu == c_dirtconlit)
+	end,
+	grow = function(nodes, pos, data, data2,area)
+		local rand = math.random()
+		local height = 1--math.floor(12 + 1 * rand)
+		local radius = 3 + 1 * rand
+
+		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
+	end,
+})
+
+
+---
+-- Pine Bush
+-- cold, dry, high disturbance
+mgtec.register_plant({
+	nodes = {
+		trunk = "default:pine_bush_stem",
+		leaves = "default:pine_bush_needles",
+		air = "air", ignore = "ignore",
+	},
+	cover = juncov,
+	density = woden,
+	priority = 68,
+	check = function(t, pos)
+		return t.temp > 14 and t.temp < 40 and t.humidity > 15 and t.humidity < 40 and t.disturb > 28 and t.disturb < 90 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
+	end,
+	grow = function(nodes, pos, data, data2,area)
+		local rand = math.random()
+		local height = 1--math.floor(12 + 1 * rand)
+		local radius = 3 + 1 * rand
+
+		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
+	end,
+})
+
+
+---
+-- Blueberry Bush
+-- cold, wet, medium disturbance
+mgtec.register_plant({
+	nodes = {
+		trunk = "default:blueberry_bush_leaves",
+		leaves = "default:blueberry_bush_leaves_with_berries",
+		air = "air", ignore = "ignore",
+	},
+	cover = juncov,
+	density = woden,
+	priority = 68,
+	check = function(t, pos)
+		return t.temp > 25 and t.temp < 70 and t.humidity > 40 and t.disturb < 70 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -266,7 +345,7 @@ mgtec.register_plant({
 	density = savden,
 	priority = 67,
 	check = function(t, pos)
-		return t.temp > 55 and t.humidity < 20 and t.disturb < 60 and (t.nodu ==  c_dirtlit or t.nodu ==  c_dsand or t.nodu ==  c_dirtdgr or t.nodu ==  c_gravel)
+		return t.temp > 55 and t.humidity < 20 and t.disturb < 60 and (t.nodu ==  c_dirtlit or t.nodu ==  c_dsand or t.nodu ==  c_dirtdgr or t.nodu ==  c_gravel or t.nodu == c_dirtconlit)
 	end,
 })
 
@@ -281,7 +360,7 @@ mgtec.register_plant({
 	density = savden,
 	priority = 66,
 	check = function(t, pos)
-		return t.temp > 45 and t.humidity > 5 and t.humidity < 25 and t.disturb < 5 and (t.nodu ==  c_dirtlit or t.nodu == c_dsand or t.nodu ==  c_dirtdgr or t.nodu ==  c_gravel)
+		return t.temp > 45 and t.humidity > 5 and t.humidity < 25 and t.disturb < 5 and (t.nodu ==  c_dirtlit or t.nodu == c_dsand or t.nodu ==  c_dirtdgr or t.nodu ==  c_gravel or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -305,7 +384,7 @@ mgtec.register_plant({
 	density = 0.005,
 	priority = 75,
 	check = function(t, pos)
-		return t.temp > 25 and t.temp < 75 and t.humidity > 21 and t.humidity < 50 and t.disturb > 30 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirtdgr)
+		return t.temp > 25 and t.temp < 75 and t.humidity > 21 and t.humidity < 50 and t.disturb > 30 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirtdgr or t.nodu == c_dirtconlit)
 	end,
 })
 --
@@ -317,7 +396,7 @@ mgtec.register_plant({
 	density = 0.005,
 	priority = 74,
 	check = function(t, pos)
-		return t.temp > 15 and t.temp < 60 and t.humidity > 45 and t.humidity < 80 and t.disturb > 20 and t.disturb < 80 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirtdgr)
+		return t.temp > 15 and t.temp < 60 and t.humidity > 45 and t.humidity < 80 and t.disturb > 20 and t.disturb < 80 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirtdgr or t.nodu == c_dirtconlit)
 	end,
 })
 --
@@ -329,7 +408,20 @@ mgtec.register_plant({
 	density = 0.005,
 	priority = 73,
 	check = function(t, pos)
-		return t.temp > 10 and t.temp < 70 and t.humidity > 15 and t.humidity < 40 and t.disturb > 60 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirtdgr)
+		return t.temp > 10 and t.temp < 70 and t.humidity > 15 and t.humidity < 40 and t.disturb > 60 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirtdgr or t.nodu == c_dirtconlit)
+	end,
+})
+
+--
+--tulip black
+--low disturbance, high altitude
+mgtec.register_plant({
+	nodes = {"flowers:tulip_black"},
+	cover = 0.001,
+	density = 0.005,
+	priority = 76,
+	check = function(t, pos)
+		return t.disturb < 30 and pos.y > 500 and (t.nodu == c_dirtsno or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtconlit)
 	end,
 })
 --
@@ -344,7 +436,7 @@ mgtec.register_plant({
 	density = 0.005,
 	priority = 72,
 	check = function(t, pos)
-		return t.temp > 15 and t.temp < 75 and t.humidity > 15 and t.humidity < 55 and t.disturb > 30 and t.disturb < 90 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_gravel or t.nodu == c_dirtsno or t.nodu == c_dirtlit)
+		return t.temp > 15 and t.temp < 75 and t.humidity > 15 and t.humidity < 55 and t.disturb > 30 and t.disturb < 90 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_gravel or t.nodu == c_dirtsno or t.nodu == c_dirtlit or t.nodu == c_dirtconlit)
 	end,
 })
 --
@@ -356,7 +448,7 @@ mgtec.register_plant({
 	density = 0.005,
 	priority = 71,
 	check = function(t, pos)
-		return t.temp > 25 and t.temp < 75 and t.humidity > 15 and t.humidity < 65 and t.disturb > 40 and (t.nodu == c_dsand or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtlit)
+		return t.temp > 25 and t.temp < 75 and t.humidity > 15 and t.humidity < 65 and t.disturb > 40 and (t.nodu == c_dsand or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtlit or t.nodu == c_dirtconlit)
 	end,
 })
 ---
@@ -368,10 +460,23 @@ mgtec.register_plant({
 	density = 0.005,
 	priority = 70,
 	check = function(t, pos)
-		return t.temp > 15 and t.temp < 70 and t.humidity > 55 and t.humidity < 85 and t.disturb > 40 and t.disturb < 90 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_gravel or t.nodu == c_dirtsno or t.nodu == c_dirtlit)
+		return t.temp > 15 and t.temp < 70 and t.humidity > 55 and t.humidity < 85 and t.disturb > 40 and t.disturb < 90 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_gravel or t.nodu == c_dirtsno or t.nodu == c_dirtlit or t.nodu == c_dirtconlit)
 	end,
 })
 --
+
+---
+--chrysanthemum_green
+-- temperate, low disturbance
+mgtec.register_plant({
+	nodes = {"flowers:chrysanthemum_green"},
+	cover = 0.001,
+	density = 0.005,
+	priority = 77,
+	check = function(t, pos)
+		return t.temp > 40 and t.temp < 60 and t.humidity > 40 and t.humidity < 60 and t.disturb > 1 and t.disturb < 30 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirtlit or t.nodu == c_dirtconlit)
+	end,
+})
 
 --===============================================
 --MISC
@@ -410,7 +515,7 @@ mgtec.register_plant({
 	density = 0.001,
 	priority = 93,
 	check = function(t, pos)
-		return t.temp > 16 and t.humidity > 25 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno)
+		return t.temp > 16 and t.humidity > 25 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
 	end,
 })
 
@@ -471,7 +576,7 @@ mgtec.register_plant({
 	density = woden,
 	priority = 77,
 	check = function(t, pos)
-		return t.temp > (spolar - mtol) and t.temp < (spolar + mtol) and t.humidity > (damp - htol) and t.disturb > (fdist - 20) and t.disturb < (fdist + 20) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirt)
+		return t.temp > (spolar - mtol) and t.temp < (spolar + mtol) and t.humidity > (damp - htol) and t.disturb < (fdist + 20) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirt)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -493,7 +598,7 @@ mgtec.register_plant({
 	density = junden,
 	priority = 76,
 	check = function(t, pos)
-		return t.temp > (spolar - htol) and t.temp < (temper + mtol) and t.humidity > (damp - htol) and t.disturb > (fdistj - 30) and t.disturb < (fdistj + 20) and  (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirt)
+		return t.temp > (spolar - htol) and t.temp < (temper + mtol) and t.humidity > (damp - htol) and t.disturb > (fdistj - 30) and t.disturb < (fdistj + 20) and  (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirt or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -516,7 +621,7 @@ mgtec.register_plant({
 	density = junden,
 	priority = 78,
 	check = function(t, pos)
-		return t.temp > (spolar - ltol) and t.temp < (spolar + ltol) and t.humidity > (damp - ltol) and t.disturb > (fdistg - 20) and t.disturb < (fdistg + 20) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirt)
+		return t.temp > (spolar - ltol) and t.temp < (spolar + ltol) and t.humidity > (damp - ltol) and t.disturb < (fdistg + 20) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirt)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -542,7 +647,7 @@ mgtec.register_plant({
 	density = junden,
 	priority = 80,
 	check = function(t, pos)
-		return t.temp > (stropic - htol) and t.humidity > (damp - mtol) and t.disturb > (fdist - 40) and t.disturb < (fdist + 30) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirt)
+		return t.temp > (stropic - htol) and t.humidity > (damp - mtol) and t.disturb < (fdist + 30) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirt)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -586,7 +691,7 @@ mgtec.register_plant({
 	density = junden,
 	priority = 81,
 	check = function(t, pos)
-		return t.temp > (stropic - ltol) and t.humidity > (damp - ltol) and t.disturb > (fdistg - 20) and t.disturb < (fdistg + 30) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirt)
+		return t.temp > (stropic - ltol) and t.humidity > (damp - ltol) and t.disturb < (fdistg + 30) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirt)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -612,7 +717,7 @@ mgtec.register_plant({
 	density = woden,
 	priority = 83,
 	check = function(t, pos)
-		return t.temp > (stropic - mtol) and t.temp < (stropic + htol) and t.humidity > (dry - mtol) and t.humidity < (average + ltol) and t.disturb > (fdist - 30) and t.disturb < (fdist + 5) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirt)
+		return t.temp > (stropic - mtol) and t.temp < (stropic + htol) and t.humidity > (dry - ltol) and t.humidity < (average + ltol) and t.disturb < (fdist + 5) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirt or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -634,7 +739,7 @@ mgtec.register_plant({
 	density = junden,
 	priority = 82,
 	check = function(t, pos)
-		return t.temp > (stropic - mtol) and t.temp < (stropic + htol) and t.humidity > (dry - htol) and t.humidity < (average + mtol) and t.disturb > (fdistg - 30) and t.disturb < (fdistg + 10) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirt)
+		return t.temp > (stropic - mtol) and t.temp < (stropic + htol) and t.humidity > (dry - mtol) and t.humidity < (average + mtol) and t.disturb > (fdistg - 30) and t.disturb < (fdistg + 10) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirt or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -657,7 +762,7 @@ mgtec.register_plant({
 	density = junden,
 	priority = 84,
 	check = function(t, pos)
-		return t.temp > (stropic - ltol) and t.temp < (stropic + htol) and t.humidity > (dry - ltol) and t.humidity < (damp + htol) and t.disturb > (fdistg - 18) and t.disturb < (fdistg + 5) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirt)
+		return t.temp > (stropic - ltol) and t.temp < (stropic + htol) and t.humidity > (dry - ltol) and t.humidity < (damp + htol) and t.disturb < (fdistg + 5) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirt or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -687,7 +792,7 @@ mgtec.register_plant({
 	density = junden,
 	priority = 89,
 	check = function(t, pos)
-		return t.temp > (temper - htol) and t.temp < (temper + htol) and t.humidity > (average - mtol) and t.humidity < (average + mtol) and t.disturb > (fdist - 10) and t.disturb < (fdist + 10) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno)
+		return t.temp > (temper - htol) and t.temp < (temper + htol) and t.humidity > (average - mtol) and t.humidity < (average + mtol) and t.disturb < (fdist + 10) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -710,7 +815,7 @@ mgtec.register_plant({
 	density = woden,
 	priority = 88,
 	check = function(t, pos)
-		return t.temp > (stropic - htol) and t.temp < (spolar + htol) and t.humidity > (dry - ltol) and t.humidity < (damp + htol) and t.disturb > (fdistj - 30) and t.disturb < (fdistj + 20) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno)
+		return t.temp > (stropic - htol) and t.temp < (spolar + htol) and t.humidity > (dry - ltol) and t.humidity < (damp + htol) and t.disturb > (fdistj - 30) and t.disturb < (fdistj + 20) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -733,7 +838,7 @@ mgtec.register_plant({
 	density = junden,
 	priority = 90,
 	check = function(t, pos)
-		return t.temp > (temper - htol) and t.temp < (temper + htol) and t.humidity > (average - ltol) and t.humidity < (average + ltol) and t.disturb > (fdistg - 10) and t.disturb < (fdistg + 5) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno)
+		return t.temp > (temper - htol) and t.temp < (temper + htol) and t.humidity > (average - ltol) and t.humidity < (average + ltol) and t.disturb < (fdistg + 5) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -759,7 +864,7 @@ mgtec.register_plant({
 	density = junden,
 	priority = 86,
 	check = function(t, pos)
-		return t.temp > (spolar - htol) and t.temp < (spolar + htol) and t.humidity > (dry - htol) and t.humidity < (average + mtol) and t.disturb > (fdist - 20) and t.disturb < (fdist - 10) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno)
+		return t.temp > (spolar - htol) and t.temp < (spolar + htol) and t.humidity > (dry - ltol) and t.humidity < (average + mtol) and t.disturb < (fdist - 10) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -781,7 +886,7 @@ mgtec.register_plant({
 	density = woden,
 	priority = 85,
 	check = function(t, pos)
-		return t.temp > (spolar - htol) and t.temp < (spolar + htol) and t.humidity > (dry - htol) and t.humidity < (average + htol) and t.disturb > (fdistg - 20) and t.disturb < (fdistg + 30) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno)
+		return t.temp > (spolar - htol) and t.temp < (spolar + htol) and t.humidity > (dry - mtol) and t.humidity < (average + htol) and t.disturb > (fdistg - 20) and t.disturb < (fdistg + 30) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -803,7 +908,7 @@ mgtec.register_plant({
 	density = junden,
 	priority = 87,
 	check = function(t, pos)
-		return t.temp > (spolar - htol) and t.temp < (spolar + ltol) and t.humidity > (dry - ltol) and t.humidity < (average + ltol) and t.disturb > (fdistg - 20) and t.disturb < (fdistg + 30) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno)
+		return t.temp > (spolar - htol) and t.temp < (spolar + ltol) and t.humidity > (dry - ltol) and t.humidity < (average + ltol) and t.disturb < (fdistg + 35) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
