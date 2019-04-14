@@ -59,3 +59,7 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 - Adjusted landscape shape (larger mountains etc)
 
 - various minor changes and additions (e.g. coral, sea ice)
+
+- mod.conf file
+
+- 5.0 new stuff (permafrost, conifer litter, black tulip, chrysanthemum_green, marram_grass, fern, pine bush, blueberry, kelp, corals... sea stuff not yet working  )
