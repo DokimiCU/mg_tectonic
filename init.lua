@@ -203,8 +203,8 @@ function climate(x, z, y, n_terr, n_terr2)
 
 	-- Easterners?
 	if x > lon_blend then
-		-- adds + 15 at centre of map, declines to zero
-		temp_x = (-0.0005*x) + 15 - blend
+		-- adds + 20 at centre of map, declines to zero
+		temp_x = (-0.00065*x) + 20 - blend
 	end
 
 
@@ -225,14 +225,15 @@ function climate(x, z, y, n_terr, n_terr2)
 	----poitive, east coast. Dry inland
 	--linear increase,
 	if x > lon_blend then
-		hum = (0.002*x) + blend
+		hum = (0.00161*x) + blend
 	--increasing humid from far x to x= 0,(rain shadow)
 	else  --negative , west coast. Wet inland
 		--linear increase,
-		hum = (0.0012*x) + 100 + blend
+		hum = (0.00161*x) + 100 + blend
 	end
 
 	--humidity transition zone East/west.
+	--[[--not right at all!!!
 	--  make wetter
 	if x < (100 + lon_blend) and x > lon_blend then
 		hum = hum + 60
@@ -251,11 +252,11 @@ function climate(x, z, y, n_terr, n_terr2)
 		-- tiny drier
 	elseif x > (-300 + lon_blend) and x < lon_blend then
 			hum = hum -15
-	end
+	end]]
 
 	--give a boost to low altitude.. (they tend to be near water)
 	--and to hill tops (catch rain)
-	if y < 15 + math.random(-4, 4) or y > 120 + math.random(-5, 5) then
+	if y < 15 + math.random(-4, 4) or y > 300 + math.random(-5, 5) then
 		hum = hum + (hum*0.05)
 		--snow capped peaks...
 		if y > 600 + math.random(-5, 5) then
@@ -263,7 +264,7 @@ function climate(x, z, y, n_terr, n_terr2)
 		elseif y > 500 + math.random(-5, 5) then
 			hum = hum + (hum * 0.35)
 		elseif y > 400 + math.random(-5, 5) then
-			hum = hum + (hum*0.25)
+			hum = hum + (hum*0.15)
 		end
 	end
 
@@ -1193,7 +1194,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					--ocean
 					if y <= SEA-1 and (basin == true or river_basin == true) then
 						--floating ice
-						if (nodu == MISCID.c_water or nodu ~= MISCID.c_river or nodu == c_ice) and temp < 25 and distu > 5 and distu <40 and y == SEA-1 then
+						if (nodu == MISCID.c_water or nodu ~= MISCID.c_river or nodu == c_ice) and temp < 28 and distu > 5 and distu <40 and y == SEA-1 then
 							data[vi] = c_ice
 							void = false
 							--seafloor
@@ -1204,6 +1205,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						and nodu ~= MISCID.c_coral_green
 						and nodu ~= MISCID.c_coral_pink
 						and nodu ~= MISCID.c_coral_cyan
+						and nodu ~= MISCID.c_kelpsand
 						  then
 							--rooted flora: low disturbance,
 							if not river_basin and distu > 3 and distu < 15 then
@@ -1234,7 +1236,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 										void = false
 									end
 								--kelp
-								elseif temp < 50 and y <= SEA-10 and y > SEA - 25 then
+							 elseif temp < 50 and y <= SEA-7 and y > SEA - 25 then
 									data[vi] = MISCID.c_kelpsand
 									void = false
 								end
@@ -1588,7 +1590,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 						--Forests..
 						--less disturbance. with enough moisture, not too cold.
-						elseif distu < 35 and hum > 30 and temp > 30 and temp < 90 then
+						elseif distu < 35 and hum > 40 and temp > 20 and temp < 91 then
 							--conifers... cold and dry
 							if temp < 42 and hum < 37 then
 								data[vi] = c_dirtconlit
@@ -1602,11 +1604,11 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						--All the rest must be grasslands
 						else
 							--dry...
-							if hum < 40 or temp >90 then
+							if hum < 45 or temp >90 then
 								data[vi] = c_dirtdgr
 								void = false
 							--cold
-							elseif temp < 31 then
+						 elseif temp < 30 then
 								data[vi] = c_dirtsno
 								void = false
 								--warm and wet
