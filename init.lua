@@ -189,28 +189,28 @@ function climate(x, z, y, n_terr, n_terr2)
 	--blending
 	local blend = (((n_terr2 + n_terr)/2) * math.random(-4, 10))
 
-	--Fohn Winds! They are hot! The East Coast is a hot dry place
-	--increasing temp from far +x to x = 0,(rain shadow) (from 50 to 100)
-
-	-- no Fohn? Westies have it mild
-	local temp_x = 50 - blend
-
-    local lon_blend = math.random(-20,20) + n_terr * 200 --offset east-west border with some noise
-
-	-- Easterners?
-	if x > lon_blend then
-		-- linear decrease, intercept at 100 (don't use in -x)
-		temp_x = (-0.0017*x) + 100 - blend
-	end
-
 	--We are Southern Hemisphererers here!
 	--decreasing temp from max z to min z (latitude) (from 100 to 0 i.e north desert to south ice)
 	-- linear increase, intercept at 50
-	local temp_z = (0.0017*z) + 50 - blend
+	local temp_z = (0.00163*z) + 50 - blend
+
+	--Fohn Winds! They are hot! The East Coast gets a temp boost
+
+	-- no Fohn? Westies are controlled by z
+	local temp_x = 0
+
+  local lon_blend = math.random(-20,20) + n_terr * 200 --offset east-west border with some noise
+
+	-- Easterners?
+	if x > lon_blend then
+		-- adds + 15 at centre of map, declines to zero
+		temp_x = (-0.0005*x) + 15 - blend
+	end
+
 
 	--Mountain tops ought to be cold!
 	--decreasing temp with hieght...and combine previous two as baseline
-	local temp = (-0.095*y) + ((temp_z + temp_x)/2) - blend
+	local temp = (-0.095*y) + temp_z + temp_x - blend
 
 	--blur edges
 	temp = temp + math.random(-4, 4)
@@ -230,6 +230,27 @@ function climate(x, z, y, n_terr, n_terr2)
 	else  --negative , west coast. Wet inland
 		--linear increase,
 		hum = (0.0012*x) + 100 + blend
+	end
+
+	--humidity transition zone East/west.
+	--  make wetter
+	if x < (100 + lon_blend) and x > lon_blend then
+		hum = hum + 60
+	-- make drier
+	elseif x > (-100 + lon_blend) and x < lon_blend then
+		hum = hum -60
+	--little wetter
+	elseif (200 + lon_blend) and x > lon_blend then
+		hum = hum + 40
+	-- little drier
+	elseif x > (-200 + lon_blend) and x < lon_blend then
+			hum = hum -40
+	--tiny wetter
+	elseif (300 + lon_blend) and x > lon_blend then
+			hum = hum + 15
+		-- tiny drier
+	elseif x > (-300 + lon_blend) and x < lon_blend then
+			hum = hum -15
 	end
 
 	--give a boost to low altitude.. (they tend to be near water)
@@ -361,7 +382,7 @@ local MISCID = {
 		c_kelpsand = minetest.get_content_id("default:sand_with_kelp"),
 		c_coral_cyan = minetest.get_content_id("default:coral_cyan"),
 		c_coral_green = minetest.get_content_id("default:coral_green"),
-		c_coral_pink = minetest.get_content_id("default:sand_with_kelp"),
+		c_coral_pink = minetest.get_content_id("default:coral_pink"),
 
 }
 
@@ -1172,25 +1193,49 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					--ocean
 					if y <= SEA-1 and (basin == true or river_basin == true) then
 						--floating ice
-						if (nodu == MISCID.c_water or nodu ~= MISCID.c_river or nodu == c_ice) and temp < 25 and distu <94 and y == SEA-1 then
+						if (nodu == MISCID.c_water or nodu ~= MISCID.c_river or nodu == c_ice) and temp < 25 and distu > 5 and distu <40 and y == SEA-1 then
 							data[vi] = c_ice
 							void = false
 							--seafloor
-						elseif nodu ~= MISCID.c_water and nodu ~= MISCID.c_river and nodu ~= c_coralo and nodu ~= c_coralb  then
-							--Coral: low disturbance, warm, shallow... allow stacking coral
-							if not river_basin and distu > 3 and distu < 15 and temp > 70 and y <= SEA-2 and y > SEA - 10 then
-								local c = math.random(1,21)
-								if c <= 1 then
-									data[vi] = MISCID.c_water
-									void = false
-								elseif c <= 6 then
-									data[vi] = c_coralb
-									void = false
-								elseif c <= 11 then
-									data[vi] = c_coralo
-									void = false
-								elseif nodu ~= c_coralo and nodu ~= c_coralb then
-									data[vi] = c_coral
+						elseif nodu ~= MISCID.c_water
+						and nodu ~= MISCID.c_river
+						and nodu ~= c_coralo
+						and nodu ~= c_coralb
+						and nodu ~= MISCID.c_coral_green
+						and nodu ~= MISCID.c_coral_pink
+						and nodu ~= MISCID.c_coral_cyan
+						  then
+							--rooted flora: low disturbance,
+							if not river_basin and distu > 3 and distu < 15 then
+								--Coral: warm, shallow... allow stacking coral
+								if temp > 70 and y <= SEA-2 and y > SEA - 10 then
+									local c = math.random(1,21)
+									if c <= 1 then
+										data[vi] = MISCID.c_water
+										void = false
+									elseif c <= 6 then
+										data[vi] = c_coralb
+										void = false
+									elseif c <= 11 then
+										data[vi] = c_coralo
+										void = false
+									--rooted
+									elseif c <= 13 then
+										data[vi] = MISCID.c_coral_green
+										void = false
+									elseif c <= 15 then
+										data[vi] = MISCID.c_coral_pink
+										void = false
+									elseif c <= 17 then
+										data[vi] = MISCID.c_coral_cyan
+										void = false
+									else
+										data[vi] = c_coral
+										void = false
+									end
+								--kelp
+								elseif temp < 50 and y <= SEA-10 and y > SEA - 25 then
+									data[vi] = MISCID.c_kelpsand
 									void = false
 								end
 							--low disturbance do fine sediment
@@ -1307,25 +1352,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 						--coast
 
-						if y <= SEA + (6*ab_stra) then
-							--[[
-							if basin and distu < 50 then
-								if y < SEA - 4 and y > SEA - 8 then
-									--kelp forest
-									if temp < 50 then
-									 data[vi] = MISCID.c_kelpsand
-									 void = false
-								 elseif temp > 60 then
-									 data[vi] = MISCID.c_coral_green
-									 void = false
-									end
-								elseif y < SEA - 7 and y > SEA - 24 and temp > 40 then
-									data[vi] = MISCID.c_coral_pink
-									void = false
-								elseif y < SEA - 12 and y > SEA - 45 and temp > 30 then
-									data[vi] = MISCID.c_coral_cyan
-									void = false
-								end]]
+						if y <= SEA + (3*ab_stra) then
 
 							--don't cover coral or own sediments
 							if nodu ~= c_coral
@@ -1345,7 +1372,12 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 									--coast super swampy..
 									if hum > 80 then
 										--frozen
-										if temp <20 then
+										--icesheet
+										if temp < 3 then
+											data[vi] = c_ice
+											void = false
+											--permafrost
+										elseif temp <8 then
 											--disturbance gives stones.
 											if distu < 50 then
 												swamp(data, vi, 5, c_permamoss, c_ice)
@@ -1355,7 +1387,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 												void = false
 											end
 											--cold
-										elseif temp <40 then
+										elseif temp <30 then
 											swamp(data, vi, 5, c_dirtsno, MISCID.c_river)
 											void = false
 											--muddy
@@ -1366,7 +1398,12 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 										--coast swampy..
 									elseif hum > 60 then
 										--frozen
-										if temp <20 then
+										--icesheet
+										if temp < 3 then
+											data[vi] = c_ice
+											void = false
+											--permafrost
+										elseif temp <8 then
 											--disturbance gives stones.
 											if distu < 50 then
 												swamp(data, vi, 25, c_permamoss, c_ice)
@@ -1376,7 +1413,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 												void = false
 											end
 											--cold
-										elseif temp <40 then
+										elseif temp <30 then
 											swamp(data, vi, 10, c_dirtsno, MISCID.c_river)
 											void = false
 											--muddy
@@ -1386,7 +1423,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 										end
 									end
 									--frozen
-								elseif temp < 15 and hum > 10 then
+								elseif temp < 5 and hum > 5 then
 									data[vi] = c_ice
 									void = false
 								--muddy bank
@@ -1424,31 +1461,43 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							end
 
 						--Frozen Lands
-						elseif temp <20 then
+						elseif temp <15 then
 							--don't cover own sediments
 							if nodu ~= c_snowbl
 							then
 								--frozen ice stacks chance
-								if temp <15 and math.random(1,7) > 6 then
+								if temp <3 and math.random(1,6) > 5 then
 									data[vi] = c_ice
 									void = false
-								--frozen ice non-stacking
-								elseif temp <20 and nodu ~= c_ice then
+									--frozen ice non-stacking
+								elseif temp <5 and nodu ~= c_ice then
 									data[vi] = c_ice
 									void = false
-							--permafrost on lowlands where wet
-							elseif hum > 80 and y < (60 + math.random(-10,10)) then
-								--disturbance gives stones.
-								if distu < 50 then
-									data[vi] = c_permamoss
+									--permafrost on lowlands where wet
+								elseif temp <8 and temp > 2 and hum > 70 and y < (100 + math.random(-20,20)) then
+									--disturbance gives stones.
+									if distu < 50 then
+										data[vi] = c_permamoss
+										void = false
+									else
+										data[vi] = c_permastone
+										void = false
+									end
+									--snow grass if enough drier
+								elseif hum >20 and temp > 2 then
+									data[vi] = c_dirtsno
 									void = false
-								else
-									data[vi] = c_permastone
+									--dry grass if enough drier
+								elseif hum >10 and temp > 2 then
+									data[vi] = c_dirtdgr
 									void = false
-								end
-								--snow if enough moisture
-							elseif hum >2 then
+									--snow if enough moisture
+								elseif temp <10 then
 									data[vi] = c_snowbl
+									void = false
+									--otherwise gravel
+								else
+									data[vi] = SEDID.c_gravel
 									void = false
 								end
 							end
@@ -1498,7 +1547,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							end
 
 						-- Dry barren... to dry (or freaking scorching hot)
-					 elseif hum <20 or temp > 99 then
+						elseif hum <20 or temp > 95 then
 							--don't cover own sediments etc
 							if nodu ~= c_dsand
 							--and nodu ~= SEDID.sand
@@ -1522,9 +1571,13 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 										data[vi] = c_dirtsno
 										void = false
 									end
-								--tropics ...warm... sand.
-								elseif temp >= 60 then
+								--hot or dry
+								elseif temp >= 90 or hum < 10 then
 									data[vi] = c_dsand
+									void = false
+								--warm and dry..savannah
+								elseif temp >= 50 then
+									data[vi] = c_dirtdgr
 									void = false
 								--cold... gravel.
 								else
@@ -1535,7 +1588,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 						--Forests..
 						--less disturbance. with enough moisture, not too cold.
-						elseif distu < 35 and hum > 30 and temp > 30 then
+						elseif distu < 35 and hum > 30 and temp > 30 and temp < 90 then
 							--conifers... cold and dry
 							if temp < 42 and hum < 37 then
 								data[vi] = c_dirtconlit
@@ -1549,7 +1602,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						--All the rest must be grasslands
 						else
 							--dry...
-							if hum < 40 then
+							if hum < 40 or temp >90 then
 								data[vi] = c_dirtdgr
 								void = false
 							--cold
