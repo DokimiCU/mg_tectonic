@@ -512,7 +512,11 @@ minetest.register_on_mapgen_init(function(mapgen_params)
 		lakes = {}
 		for i = 0, num_lakes do
 			--keep back from "shelf" as the coastline is actually much further back
-		    lakes[i] = {x = math.random(-10000,10000), z = math.random(-12000,12000), r = math.random(0,5) < 2}
+		    lakes[i] = {x = math.random(-10000,10000), z = math.random(-12000,12000), r = math.random(0,5)}
+				--save location for bug checking
+				mod_storage:set_int("Lake"..i.."x", lakes[i].x)
+				mod_storage:set_int("Lake"..i.."z", lakes[i].z)
+				mod_storage:set_int("Lake"..i.."river", lakes[i].r)
 		end
 	end
 end)
@@ -808,7 +812,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					if not basin and not river_basin then
 						for n = 0, num_lakes do
 		    				local laked = 25 + ((20 * n_terr) + (8 * n_terr2))
-		    				local laker = (150 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(55 + (5 * n_terr2))))
+		    				local laker = (160 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(55 + (5 * n_terr2))))
 		    				if x < lakes[n].x + laker and x > lakes[n].x - laker
 							and z < lakes[n].z + laker and z > lakes[n].z - laker
 							and t_base > den_base - laked then
@@ -816,14 +820,14 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							end
 
 							--Rivers draining them
-							if lakes[n].r then
+							if lakes[n].r <2 then
 	                  --local channel = (40 +(n_terr2*30))*math.cos(xab/36)
 	        					--local w = (16 + (n_terr2*7) + (10*xtgrad)) * (1 + (y/(14 - (3*xtgrad))))
-										local channel = (15 +(n_terr2*40))*math.cos(xab/36)
-	        					local w = (4 + (math.abs(n_terr2*10))) * (1 + (y/14))
+										local channel = (17 +(n_terr2*40))*math.cos(x/36)
+	        					local w = ((6 + (0.0003*xab)) + (math.abs(n_terr2*(10+ (0.0003*xab))))) * (1 + (y/8))
 	        					if z <= lakes[n].z + channel + w
 	        					and z >= lakes[n].z + channel - w
-	        					and xab > math.abs(lakes[n].x) then
+	        					and x > math.abs(lakes[n].x) then
 	        						river_basin = true
 	        					end
 							end
