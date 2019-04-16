@@ -258,8 +258,11 @@ function climate(x, z, y, n_terr, n_terr2)
 	--and to hill tops (catch rain)
 	if y < 15 + math.random(-4, 4) or y > 300 + math.random(-5, 5) then
 		hum = hum + (hum*0.05)
-		--snow capped peaks...
-		if y > 600 + math.random(-5, 5) then
+		--force snow capped peaks...
+		if y > 700 + math.random(-30, 5) then
+			hum = hum + (hum * 0.55) + 30
+			temp = temp - 30
+		elseif y > 600 + math.random(-5, 5) then
 			hum = hum + (hum * 0.55)
 		elseif y > 500 + math.random(-5, 5) then
 			hum = hum + (hum * 0.35)
@@ -1476,7 +1479,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 									data[vi] = c_ice
 									void = false
 									--frozen ice non-stacking
-								elseif temp <5 and nodu ~= c_ice then
+								elseif temp <6 and nodu ~= c_ice then
 									data[vi] = c_ice
 									void = false
 									--permafrost on lowlands where wet
@@ -1489,21 +1492,13 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 										data[vi] = c_permastone
 										void = false
 									end
-									--snow grass if enough drier
-								elseif hum >20 and temp > 2 then
-									data[vi] = c_dirtsno
-									void = false
-									--dry grass if enough drier
-								elseif hum >10 and temp > 2 then
-									data[vi] = c_dirtdgr
-									void = false
-									--snow if enough moisture
-								elseif temp <10 then
+									--snow if cold
+								elseif temp <11 then
 									data[vi] = c_snowbl
 									void = false
-									--otherwise gravel
+								--warmer give dirt
 								else
-									data[vi] = SEDID.c_gravel
+									data[vi] = c_dirtsno
 									void = false
 								end
 							end
@@ -1552,49 +1547,58 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								end
 							end
 
-						-- Dry barren... to dry (or freaking scorching hot)
-						elseif hum <20 or temp > 95 then
+						-- Dry barren... (or freaking scorching hot)
+						elseif hum <20 or temp > 99 then
 							--don't cover own sediments etc
 							if nodu ~= c_dsand
 							--and nodu ~= SEDID.sand
-							--and nodu ~= SEDID.sand2
+							and nodu ~= SEDID.c_sand2
 							and nodu ~= SEDID.c_gravel
 							and nodu ~= c_ice
 							and nodu ~= c_snowbl
 							then
-								--temperate to subp... steppe
-								if temp < 30 then
-									--cold and no water, lifeless
-									if hum < 5 then
-										data[vi] = SEDID.c_gravel
+								-- disturbed and extreme areas stripped to rock
+								if distu > 90 then
+									data[vi] = SEDID.c_gravel
+									void = false
+								--cold and dry
+							  elseif temp < 30 then
+									--very dry places are cold desert
+									if hum < 7 then
+										data[vi] = SEDID.c_sand2
 										void = false
-									--cold and a little water
-									elseif hum < 10 then
+									-- wet enough for soil, still too dry to snow
+								  elseif hum < 14 then
 										data[vi] = c_dirtdgr
 										void = false
 									--more water and it snows
-									elseif hum > 10 then
+									else
 										data[vi] = c_dirtsno
 										void = false
 									end
-								--hot or dry
-								elseif temp >= 90 or hum < 10 then
+								--hot and dry
+								--desert
+								elseif temp >= 70 then
 									data[vi] = c_dsand
 									void = false
-								--warm and dry..savannah
-								elseif temp >= 50 then
-									data[vi] = c_dirtdgr
-									void = false
-								--cold... gravel.
+								--temperate
 								else
-									data[vi] = SEDID.c_gravel
-									void = false
+									-- more moisture have soil
+									if hum > 6 then
+										data[vi] = c_dirtdgr
+										void = false
+									--very dry (or if in doubt) are gravel
+									else
+										--data[vi] = OREID.c_mese
+										data[vi] = SEDID.c_gravel
+										void = false
+									end
 								end
 							end
 
 						--Forests..
 						--less disturbance. with enough moisture, not too cold.
-						elseif distu < 35 and hum > 40 and temp > 20 and temp < 91 then
+					 elseif distu < 35 and hum > 40 and temp > 20 and temp < 90 then
 							--conifers... cold and dry
 							if temp < 42 and hum < 37 then
 								data[vi] = c_dirtconlit
@@ -1608,11 +1612,11 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						--All the rest must be grasslands
 						else
 							--dry...
-							if hum < 45 or temp >90 then
+							if hum < 40 or temp >80 then
 								data[vi] = c_dirtdgr
 								void = false
 							--cold
-						 elseif temp < 30 then
+						  elseif temp < 30 then
 								data[vi] = c_dirtsno
 								void = false
 								--warm and wet
@@ -1682,11 +1686,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 		 local vi = area:index(minp.x, y, z)
 		 for x = minp.x, maxp.x do
 
-
-
 			 ---------------------------------
-			 --We aren't putting things deep underwater/ground. So let's start there.
-			 --unfortunatly we can't distinguish caves anymore :-( so this will have to do.
 			 if y > SEA then
 
 				 --we only go ahead if it's empty
