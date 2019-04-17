@@ -232,27 +232,7 @@ function climate(x, z, y, n_terr, n_terr2)
 		hum = (0.00161*x) + 100 + blend
 	end
 
-	--humidity transition zone East/west.
-	--[[--not right at all!!!
-	--  make wetter
-	if x < (100 + lon_blend) and x > lon_blend then
-		hum = hum + 60
-	-- make drier
-	elseif x > (-100 + lon_blend) and x < lon_blend then
-		hum = hum -60
-	--little wetter
-	elseif (200 + lon_blend) and x > lon_blend then
-		hum = hum + 40
-	-- little drier
-	elseif x > (-200 + lon_blend) and x < lon_blend then
-			hum = hum -40
-	--tiny wetter
-	elseif (300 + lon_blend) and x > lon_blend then
-			hum = hum + 15
-		-- tiny drier
-	elseif x > (-300 + lon_blend) and x < lon_blend then
-			hum = hum -15
-	end]]
+
 
 	--give a boost to low altitude.. (they tend to be near water)
 	--and to hill tops (catch rain)
@@ -1578,7 +1558,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 									end
 								--hot and dry
 								--desert
-								elseif temp >= 70 then
+								elseif temp >= 80 then
 									data[vi] = c_dsand
 									void = false
 								--temperate
@@ -1860,9 +1840,10 @@ minetest.register_on_newplayer(function(player)
 	--inventory:add_item("main", "default:pick_stone")
 	--inventory:add_item("main", "default:torch 15")
 	--inventory:add_item("main", "default:ladder 10")
-	inventory:add_item("main", "farming:bread 4")
-	inventory:add_item("main", "farming:seed_wheat")
-  inventory:add_item("main", "farming:seed_cotton")
+	inventory:add_item("main", "farming:bread 7")
+	inventory:add_item("main", "farming:seed_wheat 4")
+  inventory:add_item("main", "farming:seed_cotton 4")
+	inventory:add_item("main", "default:sapling")
 end)
 
 
