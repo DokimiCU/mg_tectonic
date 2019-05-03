@@ -710,12 +710,13 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				-------------------------------------------------
 
 				-------------------------------
-				--Start with Things that must be kept clear of rock etc.
+				--Seperate Earth and Sky
 				if den_base > t_base
 				or den_soft > t_soft
 				or den_allu > t_allu
 				or den_sedi > t_sedi then
 
+					--Seperate Earth from oceans, rivers, caves.
 					----------------------------
 					-- Ocean Basin
 					-- This is so the oceans aren't a flat 5m deep boring yawn.
@@ -804,15 +805,24 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 							--Rivers draining them
 							if lakes[n].r <2 then
-	                  --local channel = (40 +(n_terr2*30))*math.cos(xab/36)
-	        					--local w = (16 + (n_terr2*7) + (10*xtgrad)) * (1 + (y/(14 - (3*xtgrad))))
-										local channel = (17 +(n_terr2*40))*math.cos(x/36)
-	        					local w = ((6 + (0.0003*xab)) + (math.abs(n_terr2*(10+ (0.0003*xab))))) * (1 + (y/8))
-	        					if z <= lakes[n].z + channel + w
-	        					and z >= lakes[n].z + channel - w
-	        					and x > math.abs(lakes[n].x) then
-	        						river_basin = true
-	        					end
+								--local channel = (40 +(n_terr2*30))*math.cos(xab/36)
+								--local w = (16 + (n_terr2*7) + (10*xtgrad)) * (1 + (y/(14 - (3*xtgrad))))
+
+								local channel = (17 +(n_terr2*40))*math.cos(x/36)
+								local w = ((6 + (0.0003*xab)) + (math.abs(n_terr2*(10+ (0.0003*xab))))) * (1 + (y/8))
+
+								--line it up north-south
+								if z <= lakes[n].z + channel + w
+								and z >= lakes[n].z + channel - w then
+									--make sure the river is on the same side East-west of the map as the lake!
+									--east lakes, only place the river further east
+									if lakes[n].x > 0 and x > lakes[n].x then
+										river_basin = true
+										--west lakes, only place river further west
+									elseif lakes[n].x < 0 and x < lakes[n].x then
+										river_basin = true
+									end
+								end
 							end
 						end
 					end
