@@ -1191,7 +1191,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					--ocean
 					if y <= SEA-1 and (basin == true or river_basin == true) then
 						--floating ice
-						if (nodu == MISCID.c_water or nodu ~= MISCID.c_river or nodu == c_ice) and temp < 28 and distu > 5 and distu <40 and y == SEA-1 then
+						if (nodu == MISCID.c_water or nodu ~= MISCID.c_river or nodu == c_ice) and temp < 30 and distu > 5 and distu <40 and y == SEA-1 then
 							data[vi] = c_ice
 							void = false
 							--seafloor
@@ -1203,40 +1203,51 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						and nodu ~= MISCID.c_coral_pink
 						and nodu ~= MISCID.c_coral_cyan
 						and nodu ~= MISCID.c_kelpsand
-						  then
-							--rooted flora: low disturbance,
-							if not river_basin and distu > 3 and distu < 15 then
-								--Coral: warm, shallow... allow stacking coral
-								if temp > 70 and y <= SEA-2 and y > SEA - 10 then
-									local c = math.random(1,21)
-									if c <= 1 then
-										data[vi] = MISCID.c_water
-										void = false
-									elseif c <= 6 then
-										data[vi] = c_coralb
-										void = false
-									elseif c <= 11 then
-										data[vi] = c_coralo
-										void = false
-									--rooted
-									elseif c <= 13 then
-										data[vi] = MISCID.c_coral_green
-										void = false
-									elseif c <= 15 then
-										data[vi] = MISCID.c_coral_pink
-										void = false
-									elseif c <= 17 then
-										data[vi] = MISCID.c_coral_cyan
-										void = false
-									else
-										data[vi] = c_coral
-										void = false
-									end
-								--kelp
-							 elseif temp < 50 and y <= SEA-7 and y > SEA - 25 then
-									data[vi] = MISCID.c_kelpsand
+						then
+							--corals: low disturbance, warm, shallow
+							if not river_basin
+							and distu > 3
+							and distu < 15
+							and temp > 70
+							and y <= SEA-2
+							and y > SEA - 10
+							then
+								-- allow stacking coral
+								local c = math.random(1,21)
+								if c <= 1 then
+									data[vi] = MISCID.c_water
+									void = false
+								elseif c <= 6 then
+									data[vi] = c_coralb
+									void = false
+								elseif c <= 11 then
+									data[vi] = c_coralo
+									void = false
+								--rooted
+								elseif c <= 13 then
+									data[vi] = MISCID.c_coral_green
+									void = false
+								elseif c <= 15 then
+									data[vi] = MISCID.c_coral_pink
+									void = false
+								elseif c <= 17 then
+									data[vi] = MISCID.c_coral_cyan
+									void = false
+								else
+									data[vi] = c_coral
 									void = false
 								end
+							--kelp: higher disturbance, colder, deeper
+							elseif not river_basin
+							and distu > 15
+							and distu < 40
+							and temp < 75
+							and y <= SEA-5
+							and y > SEA - 22
+							then
+								data[vi] = MISCID.c_kelpsand
+								void = false
+
 							--low disturbance do fine sediment
 							elseif distu < 5 and nodu ~= SEDID.c_clay and nodu ~= SEDID.c_sand2 and nodu ~= c_coral and nodu ~= c_ice then
 								data[vi] = SEDID.c_clay
