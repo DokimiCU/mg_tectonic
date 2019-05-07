@@ -434,7 +434,7 @@ local np_cave2 = {
 }
 
 
--- 3D Strata
+--3D Strata
 -- used by: ore thresholds.
 local np_strata = {
    offset = 0,
@@ -924,7 +924,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							--if it wasn't ore and isn't cave now do rock
 							elseif nocave then
 								--strata splits..
-								local thick = 9 + (6*ab_stra)
+								local thick = 9 + (5*ab_stra)
 								local ystrata = math.sin(y/thick)
 
 								--an occassional layer of obsidian around caves
@@ -986,7 +986,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 								if nocave then
 									--strata splits..
-									local thick = 2 + (6*ab_stra)
+									local thick = 5 + (4*ab_stra)
 									local ystrata = math.sin(y/thick)
 
 									--a little lost base rock...
@@ -1237,6 +1237,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 									data[vi] = c_coral
 									void = false
 								end
+							--[[Spawning, but not displaying correctly!
 							--kelp: higher disturbance, colder, deeper
 							elseif not river_basin
 							and distu > 15
@@ -1247,7 +1248,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							then
 								data[vi] = MISCID.c_kelpsand
 								void = false
-
+]]
 							--low disturbance do fine sediment
 							elseif distu < 5 and nodu ~= SEDID.c_clay and nodu ~= SEDID.c_sand2 and nodu ~= c_coral and nodu ~= c_ice then
 								data[vi] = SEDID.c_clay
