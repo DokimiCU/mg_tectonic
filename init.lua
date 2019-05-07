@@ -8,6 +8,7 @@
 --=============================================================================
 --PRELIMINARIES
 mgtec = {}
+local mod_storage = minetest.get_mod_storage()
 
 ---------------------
 --SINGLENODE
@@ -34,8 +35,8 @@ if mgtec.registered_on_first_mapgen then -- Run callbacks
 ----------------------
 --MISC
 -- the edge of the map
-local YMAX = 33000
-local YMIN = -33000
+local YMAX = 31000
+local YMIN = -31000
 
  --sealevel
 local SEA = 0
@@ -48,15 +49,15 @@ local MAXMAG = -15000
 -- Wave Roll Size: i.e Period
 --Controls distance between ranges, and thickness.
 --This is the period at the map centre. Grows to double at map edges
-local XRS = 150
+local XRS = 650 --150
 
 --Where does the continental shelf end?
-local SHELFX = 15000
-local SHELFZ = 18000
+local SHELFX = 28000
+local SHELFZ = 28000
 --How deep are the oceans?
-local SEABED = -128
+local SEABED = -15000
 --Strength of noise on continental shelf boundaries lines
-local CONOI = 10000
+local CONOI = 2000
 
 --Cave size.
 --Base cave threshold for fissures
@@ -65,7 +66,7 @@ local BCAVTF = 0.006
 local BCAVT = 0.999
 
 --Ore threshold
-local ORET = 0.96
+local ORET = 0.97
 
 --==================================================================
 --FUNCTIONS
@@ -101,7 +102,7 @@ local function ore(ab_stra, y, ORET, ybig, n_strata, data, vi, OREID)
 	local ysmax_dia = -0.5 * TSTRA
 	local ysmin_dia = -0.83 * TSTRA
 	local ys_mese2 = -0.83 * TSTRA
-	]]
+	--]]
 
 
 	--threshold adjusted with depth
@@ -172,7 +173,13 @@ end
 
 ------------------------------
 --Climate Calculations.
-local function climate(x, z, y, n_terr, n_terr2)
+function climate(x, z, y, n_terr, n_terr2)
+	if n_terr == nil then -- So it can be used outside of the loop
+		n_terr = nobj_terr_i:get2d({x=x,y=z})
+	end
+	if n_terr2 == nil then
+		n_terr2 = nobj_terr2_i:get2d({x = x, y = z})
+	end
 	--east = + x, west = - x, south = -z, n = + z
 	--Climate is decided by:
 	-- -Ranges: rains come from the west (-x), rise over the ranges dumping cooling rain, descending hot and dry (east +x)
@@ -182,26 +189,28 @@ local function climate(x, z, y, n_terr, n_terr2)
 	--blending
 	local blend = (((n_terr2 + n_terr)/2) * math.random(-4, 10))
 
-	--Fohn Winds! They are hot! The East Coast is a hot dry place
-	--increasing temp from far +x to x = 0,(rain shadow) (from 50 to 100)
-
-	-- no Fohn? Westies have it mild
-	local temp_x = 50 - blend
-
-	-- Easterners?
-	if x > 0 then
-		-- linear decrease, intercept at 100 (don't use in -x)
-		temp_x = (-0.0017*x) + 100 - blend
-	end
-
 	--We are Southern Hemisphererers here!
 	--decreasing temp from max z to min z (latitude) (from 100 to 0 i.e north desert to south ice)
 	-- linear increase, intercept at 50
-	local temp_z = (0.0017*z) + 50 - blend
+	local temp_z = (0.00163*z) + 50 - blend
+
+	--Fohn Winds! They are hot! The East Coast gets a temp boost
+
+	-- no Fohn? Westies are controlled by z
+	local temp_x = 0
+
+  local lon_blend = math.random(-20,20) + n_terr * 200 --offset east-west border with some noise
+
+	-- Easterners?
+	if x > lon_blend then
+		-- adds + 20 at centre of map, declines to zero
+		temp_x = (-0.00065*x) + 20 - blend
+	end
+
 
 	--Mountain tops ought to be cold!
 	--decreasing temp with hieght...and combine previous two as baseline
-	local temp = (-0.21*y) + ((temp_z + temp_x)/2) - blend
+	local temp = (-0.095*y) + temp_z + temp_x - blend
 
 	--blur edges
 	temp = temp + math.random(-4, 4)
@@ -215,23 +224,74 @@ local function climate(x, z, y, n_terr, n_terr2)
 
 	----poitive, east coast. Dry inland
 	--linear increase,
-	if x > 0 then
-		hum = (0.002*x) + blend
+	if x > lon_blend then
+		hum = (0.00161*x) + blend
 	--increasing humid from far x to x= 0,(rain shadow)
-	elseif x <= 0 then  --negative , west coast. Wet inland
+	else  --negative , west coast. Wet inland
 		--linear increase,
-		hum = (0.0012*x) + 100 + blend
+		hum = (0.00161*x) + 100 + blend
 	end
+
+
 
 	--give a boost to low altitude.. (they tend to be near water)
 	--and to hill tops (catch rain)
-	if y < 15 + math.random(-4, 4) or y > 120 + math.random(-5, 5) then
+	if y < 15 + math.random(-4, 4) or y > 300 + math.random(-5, 5) then
 		hum = hum + (hum*0.05)
+		--force snow capped peaks...
+		if y > 700 + math.random(-30, 5) then
+			hum = hum + (hum * 0.55) + 30
+			temp = temp - 30
+		elseif y > 600 + math.random(-5, 5) then
+			hum = hum + (hum * 0.55)
+		elseif y > 500 + math.random(-5, 5) then
+			hum = hum + (hum * 0.35)
+		elseif y > 400 + math.random(-5, 5) then
+			hum = hum + (hum*0.15)
+		end
 	end
+
+	--disturbance regime
+	local distu = math.abs(((n_terr + n_terr2)*100)/2) + blend
+
+--some places get disturbed more often
+	if y > 300 + math.random(-5, 5) then
+		distu = distu + (hum*0.10)
+	end
+
+
+	--calm areas hold water.
+	if distu <10 then
+		hum = hum + (hum*0.15)
+	--rough areas hold less moisture
+	elseif distu > 60 then
+		hum = hum - (hum*0.05)
+	elseif distu > 70 then
+		hum = hum - (hum*0.15)
+	elseif distu > 80 then
+		hum = hum - (hum*0.20)
+	elseif distu > 90 then
+		hum = hum - (hum*0.25)
+	elseif distu > 98 then
+		hum = hum - (hum*0.75)
+	end
+
+	--lakes
+	--[[
+	if numlakes ~= nil and numlakes ~= 0 then
+		for i = 0, numlakes do
+			laker = (190 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(55 + (5 * n_terr2))))
+			if x < lakes[n].x + laker and x > lakes[n].x - laker
+			and z < lakes[n].z + laker and z > lakes[n].z - laker then
+				hum = hum + 0.15 * (math.abs(x - lakes[n].x) + math.abs(z - lakes[n].z))
+			end
+		end
+	end
+	]]
 
 	hum = hum + math.random(-4, 4)
 
-return temp, hum
+return temp, hum, distu
 --done climate calculations
 end
 
@@ -267,6 +327,10 @@ local c_sandstone2 = minetest.get_content_id("default:sandstone")
 local c_sandstone3 = minetest.get_content_id("default:silver_sandstone")
 local c_obsid = minetest.get_content_id("default:obsidian")
 local c_coral = minetest.get_content_id("default:coral_skeleton")
+local c_coralb = minetest.get_content_id("default:coral_brown")
+local c_coralo = minetest.get_content_id("default:coral_orange")
+
+
 
 --sediments
 local SEDID = {
@@ -275,6 +339,7 @@ local SEDID = {
  			c_sand = minetest.get_content_id("default:sand"),
  			c_sand2 = minetest.get_content_id("default:silver_sand"),
  			c_dirt = minetest.get_content_id("default:dirt"),
+			c_perma = minetest.get_content_id("default:permafrost"),
 }
 
 --surfaces
@@ -282,9 +347,13 @@ local c_dirtgr = minetest.get_content_id("default:dirt_with_grass")
 local c_dirtdgr = minetest.get_content_id("default:dirt_with_dry_grass")
 local c_dirtsno = minetest.get_content_id("default:dirt_with_snow")
 local c_dirtlit = minetest.get_content_id("default:dirt_with_rainforest_litter")
+local c_dirtconlit = minetest.get_content_id("default:dirt_with_coniferous_litter")
 local c_snowbl = minetest.get_content_id("default:snowblock")
 local c_ice = minetest.get_content_id("default:ice")
 local c_dsand = minetest.get_content_id("default:desert_sand")
+local c_permamoss = minetest.get_content_id("default:permafrost_with_moss")
+local c_permastone = minetest.get_content_id("default:permafrost_with_stones")
+
 
 --Miscellaneous
 
@@ -294,6 +363,11 @@ local MISCID = {
 		c_air = minetest.get_content_id("air"),
 		c_ignore = minetest.get_content_id("ignore"),
 		c_lava = minetest.get_content_id("default:lava_source"),
+		c_kelpsand = minetest.get_content_id("default:sand_with_kelp"),
+		c_coral_cyan = minetest.get_content_id("default:coral_cyan"),
+		c_coral_green = minetest.get_content_id("default:coral_green"),
+		c_coral_pink = minetest.get_content_id("default:coral_pink"),
+
 }
 
 --ores
@@ -315,10 +389,10 @@ local OREID = {
 local np_terrain = {
    offset = 0,
    scale = 1,
-   spread = {x = 512, y = 608, z = 608},
-   seed = 5900033,
-   octaves = 7,
-   persist = 0.6,
+   spread = {x = 1052, y = 1280, z = 1280},
+   seed = 110013,
+   octaves = 5,
+   persist = 0.5,
    lacunarity = 2,
 }
 
@@ -327,10 +401,10 @@ local np_terrain = {
 local np_terrain2 = {
    offset = 0,
    scale = 1,
-   spread = {x = 128, y = 128, z = 128},
-   seed = 5900033,
-   octaves = 4,
-   persist = 0.6,
+   spread = {x = 288, y = 288, z = 288},
+   seed = 5938033,
+   octaves = 5,
+   persist = 0.5,
    lacunarity = 2.5,
 }
 
@@ -360,7 +434,7 @@ local np_cave2 = {
 }
 
 
--- 3D Strata
+--3D Strata
 -- used by: ore thresholds.
 local np_strata = {
    offset = 0,
@@ -383,6 +457,9 @@ local nobj_terrain2 = nil
 local nobj_cave = nil
 local nobj_cave2 = nil
 local nobj_strata = nil
+-- For getting individual n_terr values
+nobj_terr_i = nil
+nobj_terr2_i = nil
 
 -- Localise noise buffer table outside the loop, to be re-used for all
 -- mapchunks, therefore minimising memory use.
@@ -395,12 +472,40 @@ local nvals_strata = {}
 -- Localise data buffer table outside the loop, to be re-used for all
 -- mapchunks, therefore minimising memory use.
 local data = {}
+-- param2 data
+local data2 = {}
 
 --=============================================================================
 -- GENERATION
 
-minetest.register_on_generated(function(minp, maxp, seed)
+local numlakes = nil
+local lakes = nil
+local spawnpoint = {x = 0, z = 0}
 
+minetest.register_on_mapgen_init(function(mapgen_params)
+	math.randomseed(mapgen_params.seed)
+  spawnpoint = {x = math.random(-18000, 18000), z = math.random(-18000, 18000)}
+
+
+	-- some things need to be random, but stay constant throughout the loop
+
+	-- number of lakes
+	if lakes == nil then
+		num_lakes = math.random(21,28)
+		lakes = {}
+		for i = 0, num_lakes do
+			--keep back from "shelf" as the coastline is actually much further back
+		    lakes[i] = {x = math.random(-10000,10000), z = math.random(-12000,12000), r = math.random(0,5)}
+				--save location for bug checking
+				mod_storage:set_int("Lake"..i.."x", lakes[i].x)
+				mod_storage:set_int("Lake"..i.."z", lakes[i].z)
+				mod_storage:set_int("Lake"..i.."river", lakes[i].r)
+		end
+	end
+end)
+
+table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
+  math.randomseed(seed)
 	--------------------------------
 	--don't do out of bounds!
 	--world is a square, ymin will do for z and x too.
@@ -443,7 +548,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	nobj_cave = nobj_cave or minetest.get_perlin_map(np_cave, chulen)
 	nobj_cave2 = nobj_cave2 or minetest.get_perlin_map(np_cave2, chulen)
 	nobj_strata = nobj_strata or minetest.get_perlin_map(np_strata, chulen)
-
+	nobj_terr_i = nobj_terr_i or minetest.get_perlin(np_terrain.seed, np_terrain.octaves, np_terrain.persist, np_terrain.scale)
+	nobj_terr2_i = nobj_terr_i or minetest.get_perlin(np_terrain2.seed, np_terrain2.octaves, np_terrain2.persist, np_terrain2.scale)
 
 	-- Create a flat array of noise values from the perlin map, with the
 	-- minimum point being 'minp'.
@@ -467,7 +573,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	-- Get the content ID data from the voxelmanip in the form of a flat array.
 	-- Set the buffer parameter to use and reuse 'data' for this.
 	vm:get_data(data)
-
+	vm:get_param2_data(data2)
 
 	---------------------------------------------
 	-- GENERATION LOOP
@@ -534,7 +640,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local x_roll = XRS + (XRS * xtgrad)   --x axis
 
 				--The Wave!
-				local xwav = (whs*math.sin(x/x_roll))    -- north south wave (main ranges)
+				local xwav = (whs*math.cos(x/x_roll))    -- north south wave (main ranges)
+				--local xwav = (whs*math.sin(x/x_roll))    -- north south wave (main ranges)
 
 
 				--Base Wave Density.
@@ -546,13 +653,13 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				--cubing/squaring flattens out the middle range,
 				--for the wave that gives it a flat shelf at sea level.
 				--for the noise it mellows part of it out, so it adds mainly extreme peaks and dips
-				--mup lowers the landscape at the edges (ocean), otherwise the flattening of hieght would lead to endless plains
+				--mup lowers the landscape at the edges (ocean), otherwise the flattening of height would lead to endless plains
 
-				local den_base = (xwav ^ 3) + mup + ((n_terr ^2) * whs)
+				local den_base = ((xwav ^ 3)*1.2) + (mup*1.06) + ((n_terr ^2) * whs + (n_terr2*0.1))
 
 
 				---Base Threshold
-				local t_base = 0.01*y
+				local t_base = 0.0018*y
 
 
 
@@ -562,30 +669,29 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				--soft sandstone... a good enough stand in for easily erobable rocks
 				--creates regions of soft rock on top of the base layer in lowlands
 
-				--denisty
-				local den_soft = (den_base*1.5) + ((n_terr2 ^3)*0.5) -xtgrad
-				--threshold
-				local t_soft = 0.03*y -1.5
-
-
-
-				------------------------------------
-				--Alluvium
-				--eroded rock etc, deposited on lowlands
-
 				--density
-				local den_allu = (den_soft*1.01) -(xtgrad*1.5)
-				--threshold
-				local t_allu = 0.056*y - 2.98
+					local den_soft = (den_base*1.05) + (n_terr2 ^3) -(xtgrad*0.2)
+					--threshold
+					local t_soft = 0.02*y
 
 
-				------------------------------------
-				--Sediment
-				--subsurface soils and sands
-				--density
-				local den_sedi = (den_allu*1.1)
-				--threshold
-				local t_sedi = 0.057*y - 3.2
+					------------------------------------
+					--Alluvium
+					--eroded rock etc, deposited on lowlands
+
+					--density
+					local den_allu = (den_soft*1.002)
+					--threshold
+					local t_allu = 0.03*y -0.1
+
+
+					------------------------------------
+					--Sediment
+					--subsurface soils and sands
+					--density
+					local den_sedi = (den_allu*1.01)
+					--threshold
+					local t_sedi = 0.03*y-0.2
 
 
 				-------------------------------------
@@ -595,6 +701,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				local void = true  -- we have yet to set anything
 				local nocave = true		--basement rock caves
 				local basin = false		--ocean basin
+				local river_basin = false		--river basin
+
 
 
 				--------------------------------------------------
@@ -602,26 +710,26 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				-------------------------------------------------
 
 				-------------------------------
-				--Start with Things that must be kept clear of rock etc.
+				--Seperate Earth and Sky
 				if den_base > t_base
 				or den_soft > t_soft
 				or den_allu > t_allu
 				or den_sedi > t_sedi then
 
+					--Seperate Earth from oceans, rivers, caves.
 					----------------------------
 					-- Ocean Basin
 					-- This is so the oceans aren't a flat 5m deep boring yawn.
 
 					local zab = math.abs(z)
-					local inn_terr = 1 - n_terr
-					local inn_terr2 = 1 - n_terr2
-					local shelfnoi = ((inn_terr ^ 3) * CONOI) -- softens cliffs
-					local shelfsl = ((96 + (inn_terr2 *95))*y) - 100 --sets slope
-					local bed = SEABED + ((inn_terr2 ^ 3) * (SEABED/2))  --so sea bed is bumpy, with possible isles
+
+					local shelfnoi = (n_terr * n_terr2) * CONOI -- softens cliffs
+					local shelfsl = (math.abs((n_terr*10) + (n_terr2*2))) * (0.3*y)*20  --sets slope
+					local bed = SEABED + ((n_terr^2)*SEABED)
 					--Are we in the right place for oceans?
-					if (xab > (SHELFX + shelfnoi) - shelfsl
-					or zab > (SHELFZ + shelfnoi) - shelfsl)
-					and y > bed then --avoids  infinitely deepening oceans
+					if (xab > ((SHELFX + shelfnoi) - shelfsl)
+					or zab > ((SHELFZ + shelfnoi) - shelfsl))
+					and y >= bed  then --avoids  infinitely deepening oceans
 						basin = true
 					end
 
@@ -631,10 +739,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					--The point of these is:
 					-- to bring water to the dry interior, provide access, features of interest, greater altitude variation.
 					------------------------------
+
+					--[[
 					--Central Caldera
 					--To give a water feature in the middle of the map.
 					--define a square which will be the lake, then soften it with noise
-					local calr = (300 + (150 * n_terr) + (50 * n_terr2)) * (1 + (y/50))
+					local calr = (350 + (150 * n_terr) + (50 * n_terr2)) * (1 + (y/50))
 					local cald = -90 + (47 * n_terr) + (47 * n_terr2)
 					if xab < calr
 					and zab < calr
@@ -644,7 +754,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 
 					-----------------------------
 					--caldera island
-					local calir = (45 + (15 * n_terr) + (15 * n_terr2)) * (1 - (y/(25 + n_terr2)))
+					local calir = (55 + (25 * n_terr) + (25 * n_terr2)) * (1 - (y/(25 + n_terr2)))
 					local calid = -1000 - (250 * n_terr) - (250 * n_terr2)
 					if xab < calir
 					and zab < calir
@@ -679,6 +789,52 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							end
 						end
 					end
+--]]
+
+					----------------------------------
+					--Random lakes
+					if not basin and not river_basin then
+						for n = 0, num_lakes do
+		    				local laked = 25 + ((20 * n_terr) + (8 * n_terr2))
+		    				local laker = (160 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(55 + (5 * n_terr2))))
+		    				if x < lakes[n].x + laker and x > lakes[n].x - laker
+							and z < lakes[n].z + laker and z > lakes[n].z - laker
+							and t_base > den_base - laked then
+							    river_basin = true
+							end
+
+							--Rivers draining them
+							if lakes[n].r <2 then
+								--local channel = (40 +(n_terr2*30))*math.cos(xab/36)
+								--local w = (16 + (n_terr2*7) + (10*xtgrad)) * (1 + (y/(14 - (3*xtgrad))))
+
+								local channel = (17 +(n_terr2*40))*math.cos(x/36)
+								local w = ((6 + (0.0003*xab)) + (math.abs(n_terr2*(10+ (0.0003*xab))))) * (1 + (y/8))
+
+								--line it up north-south
+								if z <= lakes[n].z + channel + w
+								and z >= lakes[n].z + channel - w then
+									--make sure the river is on the same side East-west of the map as the lake!
+									--east lakes, only place the river further east
+									if lakes[n].x > 0 and x > lakes[n].x then
+										river_basin = true
+										--west lakes, only place river further west
+									elseif lakes[n].x < 0 and x < lakes[n].x then
+										river_basin = true
+									end
+								end
+							end
+						end
+					end
+--[[
+                    ----------------------------------
+                    --A river running out of the caldera in some direction
+                    local cx = (n_terr2*30)*math.cos(xab/42)
+                    local cz = (n_terr*30)*math.cos(xab/21)
+                    local w = (22 + (n_terr2*9) + (10*xtgrad)) * (1 + (y/(12 - (3*xtgrad))))
+                    if x <= cx + w and x >= cx - w and z <= cz + w and z >= cz - w then
+                        basin = true
+                    end
 
 					----------------------------------
 					--a river running bisecting the land East/west
@@ -709,12 +865,12 @@ minetest.register_on_generated(function(minp, maxp, seed)
 					and xab > 5000 then
 						basin = true
 					end
-
+--]]
 					-----------------------------------
 					--the following we don't want in basins
 					--caves... bc they would displace water.
 					--rock and ore, for obvious reasons
-					if void and not basin then
+					if void and not basin and not river_basin then
 
 						----------------------------------
 						--Things that block base rock.
@@ -768,7 +924,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							--if it wasn't ore and isn't cave now do rock
 							elseif nocave then
 								--strata splits..
-								local thick = 9 + (6*ab_stra)
+								local thick = 9 + (5*ab_stra)
 								local ystrata = math.sin(y/thick)
 
 								--an occassional layer of obsidian around caves
@@ -830,7 +986,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 
 								if nocave then
 									--strata splits..
-									local thick = 2 + (6*ab_stra)
+									local thick = 5 + (4*ab_stra)
 									local ystrata = math.sin(y/thick)
 
 									--a little lost base rock...
@@ -891,6 +1047,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						--and nodu ~= MISCID.c_ignore
 						and nodu ~= MISCID.c_water
 						and nodu ~= MISCID.c_river
+						and nodu ~= c_ice
 						then
 							--no air, water, or river water... therefore it's stable
 							stab = true
@@ -942,46 +1099,68 @@ minetest.register_on_generated(function(minp, maxp, seed)
 							if void then
 								if den_sedi > t_sedi and nocave then
 									--non-basin seas
-									if y < SEA then
+									if y < SEA-1 then
 										data[vi] = SEDID.c_sand
-										sedi = true
 										void = false
 									else
 										--We are above sea level...	now we need to know climate.
 										local temp
 										local hum
-										temp, hum = climate(x, z, y, n_terr, n_terr2)
+										local distu
+										temp, hum, distu = climate(x, z, y, n_terr, n_terr2)
 
 										--We have some fiddly coastal stuff.
 										--on a node, that is sea surface or one above
-										if (y == SEA + 1 or y == SEA) then
+										if y <= SEA + 1 and y >= SEA-1 then
 											--a humid place? will make swamps
-											if hum > 67  then  --boundary for wet climates
+											if hum > 80  then  --boundary for swamp
 												--let's place a swampy mire
-												swamp(data, vi, 100, SEDID.c_dirt, MISCID.c_river)
+												swamp(data, vi, 50, SEDID.c_clay, MISCID.c_river)
+												void = false
+											elseif hum > 60  then -- less swampy
+												swamp(data, vi, 150, SEDID.c_clay, MISCID.c_river)
 												void = false
 											--wasn't humid . Do dunes
 											else
 												data[vi] = SEDID.c_sand
 												void = false
 											end
+										-- Not coastal so...
 										--lets do Temp/humidity combos
-										--freezing cold
-										elseif temp < 5 then
-											swamp(data, vi, 3, SEDID.c_gravel, c_ice)
-											void = false
-										--permafrost
-										elseif hum > 90 and temp < 16 then
-											swamp(data, vi, 50, SEDID.c_dirt, c_ice)
-											void = false
-										-- hot arid
-										elseif temp > 67 and hum < 33 then
+										--polar
+									elseif temp < 20 then
+											--'Swamp' Polar.. all ice
+											if hum > 85 then
+												data[vi] = c_ice
+												void = false
+											-- damp polar... some ice and permafrost
+											elseif hum > 60 then
+												swamp(data, vi, 50, SEDID.c_perma, c_ice)
+												void = false
+											-- too dry
+											else
+												data[vi] = SEDID.c_gravel
+												void = false
+											end
+										--Non polar (not frozen) Swamps
+										elseif hum > 80 then
+											--disturbed swamps
+											if distu > 50 then
+												swamp(data, vi, 150, SEDID.c_gravel, MISCID.c_river)
+												void = false
+											--stable swamps
+											else
+												swamp(data, vi, 100, SEDID.c_clay, MISCID.c_river)
+												void = false
+											end
+										-- Nonpolar arid
+										elseif hum < 20 then
+											--sand dunes...?
 											data[vi] = c_dsand
 											void = false
 										--wasn't one of the weirdos. Must be dirt.
 										else
 											data[vi] = SEDID.c_dirt
-											sedi = true
 											void = false
 										--end of climate based sediments
 										end
@@ -1001,251 +1180,467 @@ minetest.register_on_generated(function(minp, maxp, seed)
 				--------------------------------
 				--Skins
 
-				if void then
-					--ocean
-					if y < SEA then
-						if basin then
-							--cover basin floors with gravel, then clay, then sand.
-							if nodu ~= MISCID.c_water
-							and nodu ~= SEDID.c_gravel
-							and nodu ~= SEDID.c_sand2
-							and nodu ~= SEDID.c_clay
-							and nodu ~= MISCID.c_ignore then
-								data[vi] = SEDID.c_gravel
-								sedi = true
-								void = false
-							elseif nodu == SEDID.c_gravel then
-								data[vi] = SEDID.c_clay
-								sedi = true
-								void = false
-							elseif nodu == SEDID.c_clay then
-								data[vi] = SEDID.c_sand2
-								sedi = true
-								void = false
-							end
-						--give some stuff for caves...
-						--a little gravel and sand, and water. but not everywhere
-						elseif not nocave then
-							if nodu == c_stone then
-								if n_terr > 0 then
-									data[vi] = SEDID.c_gravel
-									sedi = true
-									void = false
-								end
-								if n_terr > 0.9 then
-									swamp(data, vi, 50, SEDID.c_sand2, MISCID.c_river)
-									sedi = true
-									void = false
-								end
-							elseif nodu == c_stone2 then
-							 	if n_terr2 > 0 then
-									data[vi] = SEDID.c_sand
-									sedi = true
-									void = false
-								end
-								if n_terr2 > 0.9 then
-									swamp(data, vi, 50, SEDID.c_clay, MISCID.c_river)
-									sedi = true
-									void = false
-								end
-							end
-						--just regular seabed?
-						elseif nodu ~= SEDID.c_sand2 and nodu ~= MISCID.c_water then
-							data[vi] = SEDID.c_sand2
-							sedi = true
-							void = false
-						end
-					else
-						--what we have left is skinning the land surface.
-						--now we need climate data.
-						local temp
-						local hum
-						temp, hum = climate(x, z, y, n_terr, n_terr2)
 
-						--Check if stable below
-						--doing this rather than stab, becasue that allows stacking
-						--also allows it to cover unwanted things (e.g. plants)
-						local can_sur = false
-						if (nodu == c_ice
-						or nodu == SEDID.c_sand2
-						or nodu == c_dsand
-						or nodu == SEDID.c_sand
-						or nodu == SEDID.c_dirt
+				if void and nodu ~= nil and nodu ~= MISCID.c_ignore then
+					--now we need climate data.
+					local temp
+					local hum
+					local distu
+					temp, hum, distu = climate(x, z, y, n_terr, n_terr2)
+
+					--ocean
+					if y <= SEA-1 and (basin == true or river_basin == true) then
+						--floating ice
+						if (nodu == MISCID.c_water or nodu ~= MISCID.c_river or nodu == c_ice) and temp < 30 and distu > 5 and distu <40 and y == SEA-1 then
+							data[vi] = c_ice
+							void = false
+							--seafloor
+						elseif nodu ~= MISCID.c_water
+						and nodu ~= MISCID.c_river
+						and nodu ~= c_coralo
+						and nodu ~= c_coralb
+						and nodu ~= MISCID.c_coral_green
+						and nodu ~= MISCID.c_coral_pink
+						and nodu ~= MISCID.c_coral_cyan
+						and nodu ~= MISCID.c_kelpsand
+						then
+							--corals: low disturbance, warm, shallow
+							if not river_basin
+							and distu > 3
+							and distu < 15
+							and temp > 70
+							and y <= SEA-2
+							and y > SEA - 10
+							then
+								-- allow stacking coral
+								local c = math.random(1,21)
+								if c <= 1 then
+									data[vi] = MISCID.c_water
+									void = false
+								elseif c <= 6 then
+									data[vi] = c_coralb
+									void = false
+								elseif c <= 11 then
+									data[vi] = c_coralo
+									void = false
+								--rooted
+								elseif c <= 13 then
+									data[vi] = MISCID.c_coral_green
+									void = false
+								elseif c <= 15 then
+									data[vi] = MISCID.c_coral_pink
+									void = false
+								elseif c <= 17 then
+									data[vi] = MISCID.c_coral_cyan
+									void = false
+								else
+									data[vi] = c_coral
+									void = false
+								end
+							--[[Spawning, but not displaying correctly!
+							--kelp: higher disturbance, colder, deeper
+							elseif not river_basin
+							and distu > 15
+							and distu < 40
+							and temp < 75
+							and y <= SEA-5
+							and y > SEA - 22
+							then
+								data[vi] = MISCID.c_kelpsand
+								void = false
+]]
+							--low disturbance do fine sediment
+							elseif distu < 5 and nodu ~= SEDID.c_clay and nodu ~= SEDID.c_sand2 and nodu ~= c_coral and nodu ~= c_ice then
+								data[vi] = SEDID.c_clay
+								void = false
+							-- volcanic if rough
+							elseif distu > 95 and nodu ~= c_ice then
+								local c = math.random(1,10)
+								if c > 4 then
+									data[vi] = c_obsid
+									void = false
+								else
+									data[vi] = MISCID.c_water
+									void = false
+								end
+							--add sand if above sandstone or other sand
+							elseif nodu == c_sandstone
+							or nodu == c_sandstone2
+							or nodu == c_sandstone3
+							or nodu == SEDID.c_sand
+							or nodu == c_dsand
+							then
+								data[vi] = SEDID.c_sand2
+								void = false
+							--add gravel if above stone
+							elseif nodu == c_stone
+							or nodu == c_stone2
+							or nodu == OREID.c_coal
+							or nodu == OREID.c_iron
+							or nodu == OREID.c_copp
+							or nodu == OREID.c_tin then
+								data[vi] = SEDID.c_gravel
+								void = false
+							end
+						end
+					end
+
+					--give some stuff for caves...
+					--a little gravel and sand, and water. but not everywhere
+					if not nocave then
+						--only place on stone
+						if nodu == c_stone
+						or nodu == c_stone2
 						or nodu == c_sandstone
 						or nodu == c_sandstone2
-						or nodu == c_sandstone3
-						or nodu == c_stone
-						or nodu == c_stone2
-						or nodu == SEDID.c_gravel
-						or nodu == SEDID.c_clay
-						or nodu == OREID.c_coal
-						or nodu == OREID.c_iron
-						or nodu == OREID.c_copp
-						or nodu == OREID.c_tin
-						or nodu == OREID.c_gold
-						or nodu == c_obsid
-						or nodu == c_coral)
-						then
-							can_sur = true
+						or nodu == c_sandstone3  then
+							-- in disturbed areas
+							if distu > 70 then
+								if distu > 99 and y > MAXMAG then
+									swamp(data, vi, 40, c_obsid, MISCID.c_lava)
+									void = false
+								else
+									data[vi] = SEDID.c_gravel
+									void = false
+								end
+							--water seep in stable points
+						  elseif distu < 40 then
+								if hum > 60 then
+									swamp(data, vi, 50, SEDID.c_clay, MISCID.c_river)
+									void = false
+								elseif distu < 10 then
+									swamp(data, vi, 150, SEDID.c_gravel, MISCID.c_river)
+									void = false
+								end
+							--ice in cold..
+						  elseif temp < 3 then
+								data[vi] = c_ice
+								void = false
+							-- random sand
+							elseif n_terr2 > 0 then
+								data[vi] = SEDID.c_sand2
+								void = false
+							end
 						end
+					end
 
-						--is it stable?
-						-- ( remember to ban self stacking where needed..
-						--i.e. it is on the can_sur list )
-						-- bearing in mind we don't know yet about the ignore nodes.
-						if can_sur and nodu ~= MISCID.c_ignore and nocave then
-							if xab < 500 + math.random(-100, 100) then
-								if nodu ~= c_ice and nodu ~= c_dsand then
+					--what we have left is skinning the land SURFACE.
+					--Check if stable below... all the stuff okay with skinning for most things.
+					--doing this rather than stab, becasue that allows stacking
+					--also allows it to cover unwanted things (e.g. plants)
+					local can_sur = false
+					if (nodu == c_ice
+					or nodu == SEDID.c_sand2
+					or nodu == c_dsand
+					or nodu == SEDID.c_sand
+					or nodu == SEDID.c_dirt
+					or nodu == SEDID.c_perma
+					or nodu == c_sandstone
+					or nodu == c_sandstone2
+					or nodu == c_sandstone3
+					or nodu == c_stone
+					or nodu == c_stone2
+					or nodu == SEDID.c_gravel
+					or nodu == SEDID.c_clay
+					or nodu == OREID.c_coal
+					or nodu == OREID.c_iron
+					or nodu == OREID.c_copp
+					or nodu == OREID.c_tin
+					or nodu == OREID.c_gold
+					--or nodu == c_obsid
+					or nodu == c_coral)
+					then
+						can_sur = true
+					end
+
+					-- ( remember to ban self stacking where needed..
+					--i.e. it is on the can_sur list )
+					-- bearing in mind we don't know yet about the ignore nodes.
+					if can_sur
+					and nodu ~= MISCID.c_ignore
+					and nocave
+					and y >= SEA then
+
+						--coast
+
+						if y <= SEA + (3*ab_stra) then
+
+							--don't cover coral or own sediments
+							if nodu ~= c_coral
+							and nodu ~= c_coralb
+							and nodu ~= c_coralo
+							and nodu ~= SEDID.c_clay
+							and nodu ~= SEDID.c_sand
+							and nodu ~= SEDID.c_sand2
+							--and nodu ~= SEDID.c_dirt
+							and nodu ~= SEDID.c_gravel
+							and nodu ~= c_ice
+							then
+
+								--Swamps
+								if hum > 60
+								then
+									--coast super swampy..
+									if hum > 80 then
+										--frozen
+										--icesheet
+										if temp < 3 then
+											data[vi] = c_ice
+											void = false
+											--permafrost
+										elseif temp <8 then
+											--disturbance gives stones.
+											if distu < 50 then
+												swamp(data, vi, 5, c_permamoss, c_ice)
+												void = false
+											else
+												swamp(data, vi, 5, c_permastone, c_ice)
+												void = false
+											end
+											--cold
+										elseif temp <30 then
+											swamp(data, vi, 5, c_dirtsno, MISCID.c_river)
+											void = false
+											--muddy
+										else
+											swamp(data, vi, 3, SEDID.c_clay, MISCID.c_river)
+											void = false
+										end
+										--coast swampy..
+									elseif hum > 60 then
+										--frozen
+										--icesheet
+										if temp < 3 then
+											data[vi] = c_ice
+											void = false
+											--permafrost
+										elseif temp <8 then
+											--disturbance gives stones.
+											if distu < 50 then
+												swamp(data, vi, 25, c_permamoss, c_ice)
+												void = false
+											else
+												swamp(data, vi, 25, c_permastone, c_ice)
+												void = false
+											end
+											--cold
+										elseif temp <30 then
+											swamp(data, vi, 10, c_dirtsno, MISCID.c_river)
+											void = false
+											--muddy
+										else
+											swamp(data, vi, 5, SEDID.c_clay, MISCID.c_river)
+											void = false
+										end
+									end
+									--frozen
+								elseif temp < 5 and hum > 5 then
 									data[vi] = c_ice
 									void = false
+								--muddy bank
+								elseif distu < 5 then
+									--eroded bank
+									local c = math.random(1,10)
+									if c > 3 then
+										data[vi] = SEDID.c_clay
+										void = false
+									else
+										data[vi] = SEDID.c_sand
+										void = false
+									end
+								--sandy beach
+								elseif distu < 40 then
+									data[vi] = SEDID.c_sand
+									void = false
+								--gravel beach...
+								elseif distu < 60 then
+									data[vi] = SEDID.c_gravel
+									void = false
+								--rocky soft...
+								elseif distu < 90 then
+									data[vi] = c_sandstone2
+									void = false
+								--rocky...
+								elseif distu < 95 then
+									data[vi] = c_stone
+									void = false
+								-- rocky volcanic..
 								else
-									data[vi] = c_snowbl
+									data[vi] = c_obsid
 									void = false
 								end
-							--Going through Temp/humidity combos
-							elseif temp > 67  then
-								--hot and wet = rainforest
-								if hum > 67 then
-									--what's the coastline like?
-									if y >= SEA -1 and y < SEA + 3 then
-										--swamp
-										swamp(data, vi, 90, c_dirtlit, MISCID.c_river)
-										void = false
-									--not at coast
-									elseif y >= SEA + 3 then
-										data[vi] = c_dirtlit
-										void = false
-									end
-								--hot and moist = savanna/tropical seasonal forest
-								elseif hum > 33 then
-									--what's the coastline like?
-									if y >= SEA-1 and y < SEA + 3 and nodu ~= c_dsand then
-										--sandy desert
-										data[vi] = c_dsand
-										void = false
-									--not at coast
-									elseif y >= SEA + 3 then
-										--adding green ground for interest.
-										if y < (10 + math.random(-3,3)) then
-											data[vi] = c_dirtgr
-											void = false
-										else
-											data[vi] = c_dirtdgr
-											void = false
-										end
-									end
-								--hot and dry= desert
-								elseif nodu ~= c_dsand then
-									--what's the coastline like? --same as the rest!
-									--sandy desert
-									data[vi] = c_dsand
-									void = false
-								--End of Tropics
-								end
-							--Temperate
-							elseif temp > 33  then
-								--temperate and wet=--temperate rainforest
-								if hum > 67 then
-									--what's the coastline like?
-									if y >= SEA-1 and y < SEA + 3 then
-										--swamp
-										swamp(data, vi, 90, c_dirtlit, MISCID.c_river)
-										void = false
-										--not at coast
-									elseif y >= SEA + 3 then
-										data[vi] = c_dirtgr
-										void = false
-									end
+							end
 
-								--temperate and moist= -- seasonal forest
-								elseif hum > 33 then
-									--the coast is...?
-									if y >= SEA-1 and y < SEA + 3 and nodu ~= SEDID.c_sand then
-										--sandy
-										data[vi] = SEDID.c_sand
-										void = false
-									--not at coast
-								elseif y >= SEA + 3 then
-										data[vi] = c_dirtgr
-										void = false
-									end
-								--temperate and dry=-- grassland
-								else
-									----the coast is...?
-									if y >= SEA-1 and y < SEA + 3 and nodu ~= SEDID.c_sand then
-										--sandy
-										data[vi] = SEDID.c_sand
-										void = false
-									--not at coast
-									elseif y >= SEA + 3 then
-										--adding some very rare greener ground for interest.
-										if y < (10 + math.random(0,3))
-										and math.random(0,50) == 1 then
-												data[vi] = c_dirtgr
-												void = false
-										else
-											data[vi] = c_dirtdgr
-											void = false
-										end
-									end
-								--End of Temperate Zone
-								end
-							--Frozen... we don't care how wet you are when that cold
-							elseif temp < 7 then
-								-- ice
-								if y >= SEA-1 and y < SEA + 3 and nodu ~= c_ice then
-									--swamp
-									swamp(data, vi, 15, c_ice, MISCID.c_river)
+						--Frozen Lands
+						elseif temp <15 then
+							--don't cover own sediments
+							if nodu ~= c_snowbl
+							then
+								--frozen ice stacks chance
+								if temp <3 and math.random(1,6) > 5 then
+									data[vi] = c_ice
 									void = false
-								--not at coast
-							elseif y >= SEA + 3 and  nodu ~= c_snowbl then
+									--frozen ice non-stacking
+								elseif temp <6 and nodu ~= c_ice then
+									data[vi] = c_ice
+									void = false
+									--permafrost on lowlands where wet
+								elseif temp <8 and temp > 2 and hum > 70 and y < (100 + math.random(-20,20)) then
+									--disturbance gives stones.
+									if distu < 50 then
+										data[vi] = c_permamoss
+										void = false
+									else
+										data[vi] = c_permastone
+										void = false
+									end
+									--snow if cold
+								elseif temp <11 then
 									data[vi] = c_snowbl
 									void = false
-								end
-							--Okay...merely cold
-							--cold and wet=-- boreal swamp
-							elseif hum > 67 and nodu ~= c_ice then
-								--Coast?
-								if y >= SEA-1 and y < SEA + 3 then
-									--swamp...no actual water.. frozen. This happens on mountains. Permafrost
-									swamp(data, vi, 25, c_dirtsno, c_ice)
-									void = false
-								--not at coast
-								elseif y >= SEA + 3 then
-									swamp(data, vi, 35, c_dirtsno, c_ice)
-									void = false
-								end
-							--cold and moist=-- boreal forest
-							elseif hum > 33 then
-								--cold and moist=-- boreal forest
-								if y >= SEA-1 and y < SEA + 3 and nodu ~= SEDID.c_gravel then
-									swamp(data, vi, 50, SEDID.c_gravel, c_ice)
-									void = false
-								--not at coast
-								elseif y >= SEA + 3 then
+								--warmer give dirt
+								else
 									data[vi] = c_dirtsno
 									void = false
 								end
-							--cold and dry=-- tundra
-							elseif nodu ~= SEDID.c_gravel
-							and nodu ~= c_ice
-							and nodu ~= c_dsand
-							then
-								data[vi] = SEDID.c_gravel
-								void = false
-							--End of Cold zone
 							end
-						--end of places that can be surfaced by "skin"
+
+						--Broken lands
+						elseif distu >= 99 then
+							--only allow on stone
+							if (nodu == c_stone
+							or nodu == c_stone2
+							or nodu == c_sandstone
+							or nodu == c_sandstone2
+							or nodu == c_sandstone3)
+							and nodu ~= c_ice
+							then
+								--wet slips
+								if hum > 80 then
+									data[vi] = SEDID.c_clay
+									void = false
+								--gravel slip
+								elseif hum < 30 then
+									data[vi] = SEDID.c_gravel
+									void = false
+								-- stripped to rock warm is red
+								elseif temp > 50 and nodu ~= c_stone2 then
+									data[vi] = c_stone2
+									void = false
+								-- stripped to rock cold is grey
+								elseif temp <= 50 and nodu ~= c_stone then
+									data[vi] = c_stone
+									void = false
+								-- volcano on hills...
+								elseif y > 100 + math.random(-10,10) then
+									--stacks
+									if math.random(1,3) > 1 then
+										data[vi] = c_obsid
+										void = false
+										--nonstacks
+									elseif nodu ~= c_obsid then
+										data[vi] = c_obsid
+										void = false
+									end
+								--otherwise dirt
+								else
+									data[vi] = SEDID.c_dirt
+									void = false
+								end
+							end
+
+						-- Dry barren... (or freaking scorching hot)
+						elseif hum <20 or temp > 99 then
+							--don't cover own sediments etc
+							if nodu ~= c_dsand
+							--and nodu ~= SEDID.sand
+							and nodu ~= SEDID.c_sand2
+							and nodu ~= SEDID.c_gravel
+							and nodu ~= c_ice
+							and nodu ~= c_snowbl
+							then
+								-- disturbed and extreme areas stripped to rock
+								if distu > 90 then
+									data[vi] = SEDID.c_gravel
+									void = false
+								--cold and dry
+							  elseif temp < 30 then
+									--very dry places are cold desert
+									if hum < 7 then
+										data[vi] = SEDID.c_sand2
+										void = false
+									-- wet enough for soil, still too dry to snow
+								  elseif hum < 14 then
+										data[vi] = c_dirtdgr
+										void = false
+									--more water and it snows
+									else
+										data[vi] = c_dirtsno
+										void = false
+									end
+								--hot and dry
+								--desert
+								elseif temp >= 80 then
+									data[vi] = c_dsand
+									void = false
+								--temperate
+								else
+									-- more moisture have soil
+									if hum > 6 then
+										data[vi] = c_dirtdgr
+										void = false
+									--very dry (or if in doubt) are gravel
+									else
+										--data[vi] = OREID.c_mese
+										data[vi] = SEDID.c_gravel
+										void = false
+									end
+								end
+							end
+
+						--Forests..
+						--less disturbance. with enough moisture, not too cold.
+					 elseif distu < 35 and hum > 40 and temp > 20 and temp < 90 then
+							--conifers... cold and dry
+							if temp < 42 and hum < 37 then
+								data[vi] = c_dirtconlit
+								void = false
+							--unfrozen
+							else
+								data[vi] = c_dirtlit
+								void = false
+							end
+
+						--All the rest must be grasslands
+						else
+							--dry...
+							if hum < 40 or temp >80 then
+								data[vi] = c_dirtdgr
+								void = false
+							--cold
+						  elseif temp < 30 then
+								data[vi] = c_dirtsno
+								void = false
+								--warm and wet
+							else
+								data[vi] = c_dirtgr
+								void = false
+							end
+
+						--end of climate combos
 						end
-					--end of cave, oceans, skins line.
+					--end of can sur
 					end
 				--end of voids
 				end
 
-
 				--Fill the oceans and deeps
+
 				if y < SEA and void then
-					if nocave then
+					if river_basin then
+						data[vi] = MISCID.c_river
+						void = false
+					elseif nocave then
 						data[vi] = MISCID.c_water
 						void = false
 					else
@@ -1293,11 +1688,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 		 local vi = area:index(minp.x, y, z)
 		 for x = minp.x, maxp.x do
 
-
-
 			 ---------------------------------
-			 --We aren't putting things deep underwater/ground. So let's start there.
-			 --unfortunatly we can't distinguish caves anymore :-( so this will have to do.
 			 if y > SEA then
 
 				 --we only go ahead if it's empty
@@ -1330,18 +1721,20 @@ minetest.register_on_generated(function(minp, maxp, seed)
 						 --get climate data
 						 local temp
 						 local hum
-						 temp, hum = climate(x, z, y, n_terr, n_terr2)
+						 local distu
+						 temp, hum, distu = climate(x, z, y, n_terr, n_terr2)
 
 						 -- pack it in a table, for plants API
 						 local conditions = {
 																 temp = temp,
 																 humidity = hum,
+																 disturb = distu,
 																 nodu = nodu
 																 }
 						 local pos = {x = x, y = y, z = z}
 
 						 --call the api... this will create plant
-							 mgtec.choose_generate_plant(conditions, pos, data, area, vi)
+							 mgtec.choose_generate_plant(conditions, pos, data, data2, area, vi)
 
 					 --done with plantables
 					 end
@@ -1370,6 +1763,7 @@ end
 
 	-- After processing, write content ID data back to the voxelmanip.
 	vm:set_data(data)
+	vm:set_param2_data(data2)
 	-- Calculate lighting for what has been created.
 	vm:calc_lighting()
 	-- Write what has been created to the world.
@@ -1383,7 +1777,7 @@ end
 	print ("[mg_tectonic] Mapchunk generation time " .. chugent .. " ms")
 
 --End of Generation
-end)
+end))
 
 --===============================================================
 
@@ -1394,28 +1788,90 @@ end)
 -----------------------------------------------------------
 --SPAWN PLAYER
 
---Start on top of the island
-function spawnplayer(player)
-	local pos = {x = 0, y = 30, z = 0}
-	player:setpos(pos)
-	-- Get the inventory of the player
-	local inventory = player:get_inventory()
-	--give them some gear to help escape the bleak mountains
-	--[[
-	inventory:add_item("main", "default:pick_steel")
-	inventory:add_item("main", "default:torch 10")
-	inventory:add_item("main", "default:ladder 20")
-	inventory:add_item("main", "default:apple 5")]]
-	inventory:add_item("main", "boats:boat")
 
+--spawnpoints = {} -- We don't want them respawning somewhere else! (That could be interesting, though.)
+
+local function get_far_node(pos, player,alt)
+	local node = minetest.get_node(pos)
+	if node.name == "ignore" then
+	    minetest.emerge_area(pos, pos)
+			minetest.after(2,function()
+	        spawnplayer(player, alt)
+	    end)
+	    return node, false
+	end
+	return node, true
+end
+
+
+function spawnplayer(player,alt)
+    local pos = spawnpoint
+		--scatter a little to avoid respawning bug when reusing same place
+		--pos.x = spawnpoint.x + math.random(-500 , 500)
+		--pos.z = spawnpoint.z + math.random(-500, 500)
+
+    for i = alt, 0,-1 do
+				alt = i
+        pos.y = i
+				minetest.chat_send_player(player:get_player_name(), "Spawning at... x:"..pos.x.." z:"..pos.z .." y:"..pos.y)
+        local node, val = get_far_node(pos, player, alt)
+        if not val then
+						pos.y = pos.y + 1000
+						player:setpos(pos)
+            break
+        end
+        if node.name ~= "air" then
+					break
+        end
+    end
+
+	pos.y = pos.y + 2
+	player:setpos(pos)
+
+	--save location
+	mod_storage:set_int("x", pos.x)
+	mod_storage:set_int("y", pos.y)
+	mod_storage:set_int("z", pos.z)
+
+end
+
+
+
+function savedspawn(player)
+	--get location from storage
+	local spx =  mod_storage:get_int("x")
+	local spy =  mod_storage:get_int("y")
+	local spz =  mod_storage:get_int("z")
+	local pos = {x = spx, y = spy, z = spz}
+
+	minetest.chat_send_player(player:get_player_name(), "Respawning at... x:"..spx.." z:"..spz .." y:"..spy)
+	player:setpos(pos)
 end
 
 
 -----------------------------------------------------------
 minetest.register_on_newplayer(function(player)
-	spawnplayer(player)
+	spawnplayer(player, 1300)
+
+
+	-- Get the inventory of the player
+	local inventory = player:get_inventory()
+	--give them some gear to help in survival mode
+	--sometimes spawns in barren places
+
+	--inventory:add_item("main", "default:pick_stone")
+	--inventory:add_item("main", "default:torch 15")
+	--inventory:add_item("main", "default:ladder 10")
+	inventory:add_item("main", "farming:bread 7")
+	inventory:add_item("main", "farming:seed_wheat 4")
+  inventory:add_item("main", "farming:seed_cotton 4")
+	inventory:add_item("main", "default:sapling")
 end)
 
+
+--this is needed to stop it putting player at 0,0,0...but overrides bed save :-(
 minetest.register_on_respawnplayer(function(player)
-	spawnplayer(player)
+			savedspawn(player)
+			--disable default
+			return true
 end)

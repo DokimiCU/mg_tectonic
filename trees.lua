@@ -158,3 +158,4 @@ function mgtec.make_layered_tree(pos, data, area, height, radius, trunk, leaves,
 		pos.y = pos.y - math.random(2, 3)
 	end
 end
+
