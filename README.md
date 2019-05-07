@@ -64,4 +64,4 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 
 - 5.0 new stuff (permafrost, conifer litter, black tulip, chrysanthemum_green, marram_grass, fern, pine bush, blueberry, kelp, corals)
 
-(Bugs/issues: kelp not displaying correctly, plants not spawning on permafrost, some forests without trees, ugly border between east/west when lowlands)
+(Bugs/issues: kelp not displaying correctly (currently disabled), plants not spawning on permafrost, some forests without trees, ugly border between east/west when lowlands)
