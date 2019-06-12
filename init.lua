@@ -1813,7 +1813,7 @@ function spawnplayer(player,alt)
     for i = alt, 0,-1 do
 				alt = i
         pos.y = i
-				minetest.chat_send_player(player:get_player_name(), "Spawning at... x:"..pos.x.." z:"..pos.z .." y:"..pos.y)
+				minetest.chat_send_player(player:get_player_name(), "Please wait. The spawning code is looking for the ground. Spawning at... x:"..pos.x.." z:"..pos.z .." y:"..pos.y)
         local node, val = get_far_node(pos, player, alt)
         if not val then
 						pos.y = pos.y + 1000
