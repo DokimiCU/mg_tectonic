@@ -13,8 +13,12 @@ local mod_storage = minetest.get_mod_storage()
 ---------------------
 --SINGLENODE
 minetest.set_mapgen_params({mgname = "singlenode", flags = "nolight"})
+
+--Despite being the up to date method this doesn't work
 --minetest.set_mapgen_setting("mgname", "singlenode", true)
 --minetest.set_mapgen_setting("flags", "nolight", true)
+
+
 
 -----------------
 --PLANTS API
@@ -187,22 +191,22 @@ function climate(x, z, y, n_terr, n_terr2)
 	-- - Latitude: hot north, cold south
 
 	--blending
-	local blend = (((n_terr2 + n_terr)/2) * math.random(-4, 10))
+	local blend = math.random(-5, 5)
 
 	--We are Southern Hemisphererers here!
 	--decreasing temp from max z to min z (latitude) (from 100 to 0 i.e north desert to south ice)
 	-- linear increase, intercept at 50
 	local temp_z = (0.00163*z) + 50 - blend
 
-	--Fohn Winds! They are hot! The East Coast gets a temp boost
 
-	-- no Fohn? Westies are controlled by z
+	-- no Fohn? Westies are controlled by z only
 	local temp_x = 0
 
-  local lon_blend = math.random(-20,20) + n_terr * 200 --offset east-west border with some noise
+  local lon_blend = (blend*2) + n_terr * 200 --offset east-west border with some noise
 
 	-- Easterners?
 	if x > lon_blend then
+		--Fohn Winds! They are hot! The East Coast gets a temp boost
 		-- adds + 20 at centre of map, declines to zero
 		temp_x = (-0.00065*x) + 20 - blend
 	end
@@ -212,68 +216,79 @@ function climate(x, z, y, n_terr, n_terr2)
 	--decreasing temp with hieght...and combine previous two as baseline
 	local temp = (-0.095*y) + temp_z + temp_x - blend
 
-	--blur edges
-	temp = temp + math.random(-4, 4)
-
 	---------------
 	--what's the humidity? Rainshadow!
 	--decreasing humid from far x to x= 0,(rain shadow)
+	--tip a little past 50 for greater variety
+	--i.e. 0-60, so have wet islands on the dry side, dry islands on wet side
 
 	--if in doubt ...
-	local hum = 50 + blend
+	local hum = 50
 
 	----poitive, east coast. Dry inland
 	--linear increase,
 	if x > lon_blend then
-		hum = (0.00161*x) + blend
+		hum = (0.00194*x) + blend
 	--increasing humid from far x to x= 0,(rain shadow)
 	else  --negative , west coast. Wet inland
 		--linear increase,
-		hum = (0.00161*x) + 100 + blend
+		--starts a little lower than max (i.e. + <100)
+		--so that altitude boosts it to max
+		hum = (0.00145*x) + 85 + blend
 	end
 
+	--disturbance regime
+	--i.e. ecological succession
+	local distu = math.abs((((n_terr + n_terr2 + n_terr2)*100)/3)) + blend
 
-
-	--give a boost to low altitude.. (they tend to be near water)
-	--and to hill tops (catch rain)
-	if y < 15 + math.random(-4, 4) or y > 300 + math.random(-5, 5) then
+	--altitude effects..
+	--coast is wet, but disturbed
+	-- hill tops catch rain but are more disturbed
+	if y < 8 + blend or y > 300 + blend then
 		hum = hum + (hum*0.05)
 		--force snow capped peaks...
 		if y > 700 + math.random(-30, 5) then
 			hum = hum + (hum * 0.55) + 30
 			temp = temp - 30
-		elseif y > 600 + math.random(-5, 5) then
+			distu = distu + (distu*0.1)
+		elseif y > 600 + blend then
 			hum = hum + (hum * 0.55)
-		elseif y > 500 + math.random(-5, 5) then
+			distu = distu + (distu*0.05)
+		elseif y > 500 + blend then
 			hum = hum + (hum * 0.35)
-		elseif y > 400 + math.random(-5, 5) then
+		elseif y > 400 + blend then
 			hum = hum + (hum*0.15)
+		elseif (y <= 2 and y >= -1) then
+			-- generally wetter, but sometimes drier
+			--..coasts are more variable
+			hum = hum + 3 + blend
+			distu = distu + (distu*0.05)
 		end
 	end
 
-	--disturbance regime
-	local distu = math.abs(((n_terr + n_terr2)*100)/2) + blend
 
---some places get disturbed more often
-	if y > 300 + math.random(-5, 5) then
-		distu = distu + (hum*0.10)
-	end
-
-
+	--disturbance Feedsback on micro-climate
 	--calm areas hold water.
+	--exposed areas are hotter
+	--sheltered a little colder
 	if distu <10 then
 		hum = hum + (hum*0.15)
-	--rough areas hold less moisture
+		temp = temp - (temp*0.01)
 	elseif distu > 60 then
-		hum = hum - (hum*0.05)
-	elseif distu > 70 then
-		hum = hum - (hum*0.15)
-	elseif distu > 80 then
-		hum = hum - (hum*0.20)
-	elseif distu > 90 then
-		hum = hum - (hum*0.25)
-	elseif distu > 98 then
-		hum = hum - (hum*0.75)
+		if distu > 60 then
+			hum = hum - (hum*0.05)
+		elseif distu > 70 then
+			hum = hum - (hum*0.15)
+		elseif distu > 80 then
+			hum = hum - (hum*0.20)
+			temp = temp + (temp*0.01)
+		elseif distu > 90 then
+			hum = hum - (hum*0.25)
+			temp = temp + (temp*0.02)
+		elseif distu > 98 then
+			hum = hum - (hum*0.75)
+			temp = temp + (temp*0.05)
+		end
 	end
 
 	--lakes
@@ -289,7 +304,6 @@ function climate(x, z, y, n_terr, n_terr2)
 	end
 	]]
 
-	hum = hum + math.random(-4, 4)
 
 return temp, hum, distu
 --done climate calculations
@@ -487,6 +501,8 @@ local lakes = nil
 local spawnpoint = {x = 0, z = 0}
 
 minetest.register_on_mapgen_init(function(mapgen_params)
+
+
 	math.randomseed(mapgen_params.seed)
   spawnpoint = {x = math.random(-18000, 18000), z = math.random(-18000, 18000)}
 
@@ -495,7 +511,7 @@ minetest.register_on_mapgen_init(function(mapgen_params)
 
 	-- number of lakes
 	if lakes == nil then
-		num_lakes = math.random(8,12)
+		num_lakes = math.random(12,16)
 		lakes = {}
 		for i = 0, num_lakes do
 			--keep back from "shelf" as the coastline is actually much further back
@@ -1615,7 +1631,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 						--Forests..
 						--less disturbance. with enough moisture, not too cold.
-					elseif distu < 22 and hum > 25 and temp > 20 and temp < 90 then
+					 elseif distu < 20 and hum > 26 and temp > 21 and temp < 90 then
 							--conifers... cold and dry
 							if temp < 45 and hum < 45 then
 								data[vi] = c_dirtconlit
