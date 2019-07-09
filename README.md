@@ -1,7 +1,7 @@
 # mg_tectonic
 by Dokimi
 
-Current version 0.2
+Current version 0.3
 
 # Map Outline
 A naturalistic mapgen for Minetest, based around mimicking the landscape of a tectonic plate boundary.
@@ -63,5 +63,12 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 - mod.conf file
 
 - 5.0 new stuff (permafrost, conifer litter, black tulip, chrysanthemum_green, marram_grass, fern, pine bush, blueberry, kelp, corals)
+
+
+0.3:
+
+- Rebalance landscape, rivers, lakes.
+
+- custom cloud height
 
 (Bugs/issues: kelp not displaying correctly (currently disabled), plants not spawning on permafrost, some forests without trees, ugly border between east/west when lowlands)
