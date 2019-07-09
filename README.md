@@ -67,8 +67,8 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 
 0.3:
 
-- Rebalance landscape, rivers, lakes.
+- Rebalance landscape, rivers, lakes, climate.
 
 - custom cloud height
 
-(Bugs/issues: kelp not displaying correctly (currently disabled), plants not spawning on permafrost, some forests without trees, ugly border between east/west when lowlands)
+(Bugs/issues: kelp not displaying correctly (currently disabled), plants not spawning on permafrost, some forests without trees (fixed?), ugly border between east/west when lowlands)
