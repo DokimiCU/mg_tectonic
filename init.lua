@@ -27,12 +27,12 @@ dofile(minetest.get_modpath("mg_tectonic").."/plants_api.lua")
 dofile(minetest.get_modpath("mg_tectonic").."/plants.lua")
 
 if mgtec.registered_on_first_mapgen then -- Run callbacks
-		for _, f in ipairs(mgtec.registered_on_first_mapgen) do
-			f()
-		end
-		mgtec.registered_on_first_mapgen = nil
-		mgtec.register_on_first_mapgen = nil
+	for _, f in ipairs(mgtec.registered_on_first_mapgen) do
+		f()
 	end
+	mgtec.registered_on_first_mapgen = nil
+	mgtec.register_on_first_mapgen = nil
+end
 
 --=============================================================================
 -- PARAMETERS
@@ -53,7 +53,7 @@ local MAXMAG = -15000
 -- Wave Roll Size: i.e Period
 --Controls distance between ranges, and thickness.
 --This is the period at the map centre. Grows to double at map edges
-local XRS = 650 --150
+local XRS = 870
 
 --Where does the continental shelf end?
 local SHELFX = 24000
@@ -214,7 +214,12 @@ function climate(x, z, y, n_terr, n_terr2)
 
 	--Mountain tops ought to be cold!
 	--decreasing temp with hieght...and combine previous two as baseline
-	local temp = (-0.095*y) + temp_z + temp_x - blend
+	local temp = temp_z + temp_x - blend
+	--only apply height adjustment above sea level, otherwise cooking oceans
+	--i.e. -0.06 = -60 at 1000m
+	if y >= -2 then
+		temp = (-0.06*y) + temp_z + temp_x - blend
+	end
 
 	---------------
 	--what's the humidity? Rainshadow!
@@ -239,30 +244,37 @@ function climate(x, z, y, n_terr, n_terr2)
 
 	--disturbance regime
 	--i.e. ecological succession
-	local distu = math.abs((((n_terr + n_terr2 + n_terr2)*100)/3)) + blend
+	local distu =   ((((n_terr^2) + (n_terr2^2))/2)*100) + blend
 
 	--altitude effects..
 	--coast is wet, but disturbed
 	-- hill tops catch rain but are more disturbed
-	if y < 8 + blend or y > 300 + blend then
-		hum = hum + (hum*0.05)
-		--force snow capped peaks...
-		if y > 700 + math.random(-30, 5) then
-			hum = hum + (hum * 0.55) + 30
+	if y > 490 or (y < 10 and y > -3) then
+		--alpine (force snowy)
+		if y > 1000 + math.random(-30, 5) then
+			hum = hum + 48
 			temp = temp - 30
-			distu = distu + (distu*0.1)
-		elseif y > 600 + blend then
-			hum = hum + (hum * 0.55)
-			distu = distu + (distu*0.05)
+			distu = distu + 12
+			--subalpine
+		elseif y > 900 + blend then
+			hum = hum + 24
+			temp = temp - 15
+			distu = distu + 6
+		elseif y > 800 + blend then
+			hum = hum + 12
+			temp = temp - 5
+			distu = distu + 3
+			--montane
+		elseif y > 650 + blend then
+			hum = hum + 6
 		elseif y > 500 + blend then
-			hum = hum + (hum * 0.35)
-		elseif y > 400 + blend then
-			hum = hum + (hum*0.15)
-		elseif (y <= 2 and y >= -1) then
+			hum = hum + 3
+			--coast
+		elseif (y <= 3 and y >= -1) then
 			-- generally wetter, but sometimes drier
 			--..coasts are more variable
 			hum = hum + 3 + blend
-			distu = distu + (distu*0.05)
+			distu = distu + 5
 		end
 	end
 
@@ -271,23 +283,26 @@ function climate(x, z, y, n_terr, n_terr2)
 	--calm areas hold water.
 	--exposed areas are hotter
 	--sheltered a little colder
-	if distu <10 then
-		hum = hum + (hum*0.15)
-		temp = temp - (temp*0.01)
-	elseif distu > 60 then
-		if distu > 60 then
-			hum = hum - (hum*0.05)
-		elseif distu > 70 then
-			hum = hum - (hum*0.15)
+	if distu <15 or distu >80 then
+		if distu < 10 then
+			if distu <5 then
+				hum = hum + 8
+				temp = temp - 4
+			elseif distu <15 then
+				hum = hum + 4
+				temp = temp - 2
+			end
 		elseif distu > 80 then
-			hum = hum - (hum*0.20)
-			temp = temp + (temp*0.01)
-		elseif distu > 90 then
-			hum = hum - (hum*0.25)
-			temp = temp + (temp*0.02)
-		elseif distu > 98 then
-			hum = hum - (hum*0.75)
-			temp = temp + (temp*0.05)
+			if distu > 95 then
+				hum = hum - 12
+				temp = temp + 12
+			elseif distu > 90 then
+				hum = hum - 6
+				temp = temp + 6
+			elseif distu > 80 then
+				hum = hum - 3
+				temp = temp + 3
+			end
 		end
 	end
 
@@ -638,6 +653,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--Get the node underneath
 				local nodu  = data[(vi - ystridevm)]
 
+
 				-----------
 				-- Math
 
@@ -646,18 +662,20 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--x axis terrain gradient. 0 at centre. 1 at edges.
 				--Used by equations to adjust along x axis
 				local xtgrad = (xab/YMAX)
+
+				--amplitude... going from 1 to zero at map edge
+				local whs = 1-xtgrad
+
+
 				--Move up/down along x axis. Goes from +1 to -1
         --mup raises and lowers along x axis. the two terms cancel out in middle of x range (15k).
         --aimed for equations that need to lift map centre, sink edges
-        local mup = (1 - xtgrad) + (-1 * xtgrad)
+        local mup = whs + (-1 * xtgrad)
 
 
 				------------------
 				--Base Layer Waves
 				--creates the underlying, undulating and mountainous terrain
-
-				--amplitude... going from 1 to zero at map edge
-				local whs = 1-xtgrad
 
 
 				--Wave period. "Roll". i.e. how wide/steep and they are.
@@ -674,54 +692,60 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--the wave controls the landscape folding i.e. the bunching up caused by the plates hitting eachother.
 				--variation along this fold is caused by erosion, so is much more random...
 
-				--cubing/squaring flattens out the middle range,
+				--cubing/squaring flattens out the middle range, squaring eliminates negatives
 				--for the wave that gives it a flat shelf at sea level.
 				--for the noise it mellows part of it out, so it adds mainly extreme peaks and dips
 				--mup lowers the landscape at the edges (ocean), otherwise the flattening of height would lead to endless plains
 				--wave + raise + large hills 2 + sharp hills (moderated by large or gives sky needles) + cliffs 2
 
+				--waves
+				local dwav = ((xwav ^ 2)*2.7) + ((xwav ^ 3)*8.5) + (mup*5)
+				--noise
+				local dnoi = ((n_terr ^3) + ((n_terr)*0.5) + ((n_terr2*n_terr)*0.78)) * 2 * whs
+				--cliffs
+				local dclif1 = ((ab_stra^2)*0.6)
+				local dclif2 = ((ab_cave*ab_cave2)*0.08)
 
-				local den_base = ((xwav ^ 3)*1.2) + (mup*1.06) + (((n_terr ^2) + ((n_terr)*0.1) + ((n_terr2*n_terr)*0.6) - ((ab_stra^2)*0.07)) * whs) - ((ab_cave*ab_cave2)*0.04)
+				local den_base = dwav + dnoi - dclif1 - dclif2
 
 
-				---Base Threshold
-				local t_base = 0.0018*y
+				---Base Threshold (use for all of them now)
+				local t_base = 0.0108*y
 
 
 
 				-------------------------------------
 				--Soft Rock
 				--layered on top of the base layer.
+				--adding to previous: x >1 = steeper. x < 1 flatter
 				--soft sandstone... easily erobable rocks sedimentary rocks
 				--creates regions of soft rock on top of the base layer in lowlands
-				--base so hugs existing, cubed for plains - flattened to coast, cliffs
+				--base + boost + noise - cliff
 
-				--adding to previous: x >1 = add to top. x < 1 add to slopes
-				local softcliff = ((ab_cave*ab_cave2)*0.1)
 
 
 				--density
-				local den_soft = (den_base*0.8) + ((n_terr2 * n_terr2 * n_terr) * (1.3-xtgrad)) - softcliff
-				--threshold
-				local t_soft = 0.006*y -0.15
+				local den_soft = (den_base*0.75) + 0.4 + ((n_terr ^ 2) * (1.3 + mup - xtgrad)) - dclif2
+				--threshold (redundant)
+				--local t_soft = 0.006*y -0.15
 
 				------------------------------------
 				--Alluvium
 				--eroded rock etc, deposited on lowlands
 
 				--density
-				local den_allu = (den_soft*0.9) - softcliff
-				--threshold
-				local t_allu = 0.0075*y -0.17
+				local den_allu = (den_soft*0.745) + 0.2 - dclif2
+				--threshold (redundant)
+				--local t_allu = 0.0075*y -0.17
 
 
 				------------------------------------
 				--Sediment
 				--subsurface soils and sands
 				--density
-				local den_sedi = (den_allu*0.9) - softcliff
-				--threshold
-				local t_sedi = 0.0085*y -0.18
+				local den_sedi = (den_allu*0.74) + 0.2 - dclif2
+				--threshold (redundant)
+				--local t_sedi = 0.0085*y -0.18
 
 				-------------------------------------
 				--Checks
@@ -741,9 +765,9 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				-------------------------------
 				--Seperate Earth and Sky
 				if den_base > t_base
-				or den_soft > t_soft
-				or den_allu > t_allu
-				or den_sedi > t_sedi then
+				or den_soft > t_base
+				or den_allu > t_base
+				or den_sedi > t_base then
 
 					--Seperate Earth from oceans, rivers, caves.
 					----------------------------
@@ -828,7 +852,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						for n = 0, num_lakes do
 							local laked = -25 + (10 * n_terr2)
 		    			local laker = (160 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(55 + (5 * n_terr2))))
-		    			if x < lakes[n].x + laker and x > lakes[n].x - laker
+		    			if x < lakes[n].x + (laker*1.6) and x > lakes[n].x - (laker*1.6)
 							and z < lakes[n].z + laker and z > lakes[n].z - laker
 							and y > laked then
 								river_basin = true
@@ -1004,7 +1028,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						------------------------
 						--Place soft rock
 						if void then
-							if den_soft > t_soft then
+							if den_soft > t_base then
 
 								-----------------
 								--Caves for soft rock
@@ -1085,11 +1109,19 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						end
 
 						-- the following need to be stable
-						if stab then
+						--but some solid things are stable..e.g. clay,.
+						--... so covers caves, rather than have giant holes
+						--allows "clay caves"
+						if not stab then
+							if den_sedi > t_base and nocave then
+								data[vi] = SEDID.c_clay
+								void = false
+							end
+						elseif stab then
 
 							--Place alluvium
 							if void then
-								if den_allu > t_allu and nocave then
+								if den_allu > t_base and nocave then
 
 									--strata splits..
 									local thick = 10 + (50*ab_stra)
@@ -1128,7 +1160,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							--these are done to match the location
 
 							if void then
-								if den_sedi > t_sedi and nocave then
+								if den_sedi > t_base and nocave then
 									--non-basin seas
 									if y < SEA-1 then
 										data[vi] = SEDID.c_sand
@@ -1201,6 +1233,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							--finished sediments
 							end
 						--done with stables.
+
 						end
 
 					--finished with not in basin
@@ -1629,23 +1662,23 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								end
 							end
 
-						--Forests..
-						--less disturbance. with enough moisture, not too cold.
-					 elseif distu < 20 and hum > 26 and temp > 21 and temp < 90 then
+							--Forests..
+							--less disturbance. with enough moisture, not too cold.
+						elseif distu < 25 and hum > 35 and temp > 25 and temp < 90 then
 							--conifers... cold and dry
-							if temp < 45 and hum < 45 then
+							if temp < 40 and hum < 45 then
 								data[vi] = c_dirtconlit
 								void = false
-							--unfrozen
+							--all the others...because that's all we got
 							else
 								data[vi] = c_dirtlit
 								void = false
 							end
 
-						--All the rest must be grasslands
+							--All the rest must be grasslands
 						else
 							--dry...
-							if hum < 30 or temp >90 then
+							if hum < 40 or temp >90 then
 								data[vi] = c_dirtdgr
 								void = false
 							--cold
@@ -1882,7 +1915,7 @@ end
 
 -----------------------------------------------------------
 minetest.register_on_newplayer(function(player)
-	spawnplayer(player, 1300)
+	spawnplayer(player, 1600)
 
 
 	-- Get the inventory of the player
@@ -1902,7 +1935,7 @@ end)
 
 --default clouds are way too low...raise them
 local init_cloud = function(player)
-	player:set_clouds({color="#FFFFFFFC", density=0.40, height=1000, thickness=20, speed ={x=2, z=0}})
+	player:set_clouds({color="#FFFFFFFC", density=0.40, height=1300, thickness=25, speed ={x=1, z=0}})
 end
 
 --this is needed to stop it putting player at 0,0,0...but overrides bed save :-(
