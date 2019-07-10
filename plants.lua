@@ -8,6 +8,33 @@ Many syntaxes are possible, with their default behaviour (see *grow*):
 * `nodes = {"default:grass_1", "default:grass_2", "default:grass_3", "default:grass_4", "default:grass_5"}`: generate one grass node, randomly chosen between the 5 nodes.
 * `nodes = {"default:grass_1", "default:grass_2", "default:grass_3", "default:grass_4", "default:grass_5, n=3"}`: generate 3 grass nodes vertically (my example is a bit sillyâ€¦), randomly chosen between the 5 nodes (chosen once, not 3 times).
 --anything more needs a grow function
+
+#### cover
+Decimal number between 0 and 1, which determines the proportion of surface nodes that are "reserved" for the plant. This doesn't necessarily mean that there is a plant on the node (see *density*), but this "cover" prevents other plants with lower priority from spawning on said nodes.
+
+#### density
+Number between 0 and cover. Proportion of nodes that are effectively covered by the plant.
+
+Examples:
+* `cover = 0.8 ; density = 0.8`: the plant is present on 80% of the nodes, so extremely dense. Other plants can't take more than the remaining 20% if they have a lower `priority`.
+* `cover = 0.8 ; density = 0.1`: the plant is present on 10% of the nodes, so more scattered, but other plants can't take more than 20% if they have a lower `priority`. Params like this are suitable for a plant that naturally needs much space.
+* `cover = 0.1 ; density = 0.1`: the plant is present on 10% of the nodes as in the previous case, but other plants are much more common (max 90% of the nodes).
+
+#### priority
+Integer generally between 0 and 100 (no strict rule :) to determine which plants are dominating the others. The dominant plants (with higher priority) impose their *cover* on the others.
+
+#### check
+Function to check the conditions. Should return a boolean: true, the plant can spawn here ; false, the plant can't spawn and doesn't impose its *cover*. It takes 2 parameters:
+* `t`: table containing all possible conditions: all noises (`t.v1` to `t.v20`), dirt thickness `t.thickness`, temperature `t.temp`, humidity `t.humidity`, humidity from sea `t.sea_water`, from rivers `t.river_water`, from sea and rivers `t.water`.
+* `pos`: position of the future plant, above the dirt node.
+
+```
+check = function(t, pos)
+	return t.v15 < 0.7 and t.temp >= 1.9 and t.humidity > 2 and t.v16 > 2
+end,
+```
+
+
 --]]
 
 ----------------------------------------------------
@@ -23,12 +50,6 @@ Many syntaxes are possible, with their default behaviour (see *grow*):
 -- 20-40	Sub-polar
 -- 0-20 Polar
 
---middle of range
-local tropic = 90
-local stropic = 70
-local temper = 50
-local spolar = 30
-local polar = 10
 
 --Humidity
 -- >80 Swamp
@@ -37,18 +58,6 @@ local polar = 10
 -- 20-40	Dry
 -- 0-20 Arid
 
---middle of range
-local swamp = 90
-local damp = 70
-local average = 50
-local dry = 30
-local arid = 10
-
---add on to the above to create a range
---tolerance
-local htol = 28
-local mtol = 18
-local ltol = 14
 
 --Disturbance
 -- >50 Disturbed
@@ -142,241 +151,506 @@ local c_river = minetest.get_content_id("default:river_water_source")
 --remember to set values for all the conditions...or it will go strange places
 
 --===============================================================
---Tree densities
---Dense jungles
-local juncov = 0.12
-local junden = 0.024
---Woodlands
-local wodcov = juncov/4
-local woden = wodcov/4
---Open grasslands
-local savcov = wodcov/4
-local savden = savcov/6
+
+--Climate
+--Temperature
+local tropic = 90
+local stropic = 70
+local temper = 50
+local spolar = 30
+local polar = 10
+
+--Humidity
+local swamp = 90
+local damp = 70
+local average = 50
+local dry = 30
+local arid = 10
+
+--disturbance.
+local barren = 90
+local open = 70
+local transition = 50
+local young = 30
+local old = 10
+
+--add on to the above to create a range
+--tolerance
+local htol = 24
+local mtol = 12
+local ltol = 6
+
 
 --==============================================================
--- Grasses
+--priority..higher exclude lower
+--everything lower must survive in the remaining uncovered space.
 
--- jungle grass.
--- temp to tropic, favours medium to low disturbance
-mgtec.register_plant({
-	nodes = {"default:junglegrass"},
-	cover = 0.05,
-	density = 0.055,
-	priority = 65,
-	check = function(t, pos)
-		return t.temp > 50 and t.humidity > 40 and t.disturb < 80 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr)
-	end,
-})
+--covers
+-- 0 - 1. Proportion of space saved for plant.
+--Blocks lower priority plants in area. Competitiveness
+local includer = 0.001
+local vlo_cov = 0.002
+local lo_cov = 0.04
+local mid_cov = 0.06
+local hi_cov = 0.12
+local vhi_cov = 0.24
+local excluder = 0.48
 
 
--- Grass. (green)
--- cold to tropics with average or more water, high to medium disturbance
-for i = 1, 5 do
+--density
+--0 - 1. Proportion of space covered by the plant.
+local super_rare = 0.0001
+local rare = 0.001
+local scattered = 0.01
+local uncommon = 0.05
+local common = 0.1
+local abundant = 0.2
+local plague = 0.4
+
+--cover should likely be higher than density?
+
+--==============================================================
+
+--Normal (for soils).. forests and grasslands and cold
+local plantlist1 = {
+	--Green grass ..higher numbered grass is taller
+	{"default:grass_1", mid_cov, uncommon, 26, (spolar - htol), (tropic + htol), (average - ltol), (swamp + htol), (old - ltol), (open + htol)},
+	{"default:grass_2", mid_cov, uncommon, 27, (spolar - mtol), (tropic + htol), (average), (swamp + htol), (young - mtol), (open + htol)},
+	{"default:grass_3", mid_cov, uncommon, 28, (spolar - ltol), (tropic + htol), (average), (swamp + htol), (young - ltol), (open + mtol)},
+	{"default:grass_4", mid_cov, uncommon, 29, (spolar), (tropic + htol), (average + ltol), (swamp + htol), (young), (open)},
+	{"default:grass_5", mid_cov, uncommon, 30, (spolar + ltol), (tropic + htol), (average + mtol), (swamp + htol), (young), (open - ltol)},
+	----
+	{"default:junglegrass", mid_cov, uncommon, 31, (stropic - mtol), (tropic + mtol), (damp - mtol), (swamp + mtol), (young - mtol), (transition + ltol)},
+	--ferns...higher numbered is taller
+	{"default:fern_1", lo_cov, scattered, 33, (spolar - mtol), (tropic + htol), (average - mtol), (swamp + htol), 0, (young + mtol)},
+	{"default:fern_2", lo_cov, scattered, 34, (spolar - ltol), (tropic + htol), (average - ltol), (swamp + htol), 0, (young + ltol)},
+	{"default:fern_3", lo_cov, scattered, 35, spolar, (tropic + htol), average, (swamp + htol), 0, young},
+	--flowers
+	{"flowers:viola", vlo_cov, rare, 38, (temper - htol), (temper + htol), (average - htol), (average + ltol), open, (open + htol)},
+	{"flowers:tulip", vlo_cov, rare, 39, (spolar - htol), (temper + ltol), arid, average, transition, open},
+	{"flowers:geranium", vlo_cov, rare, 40, (spolar - mtol), (temper + mtol), (damp - htol), (damp + ltol), transition, open},
+	{"flowers:tulip_black", includer, super_rare, 41, (polar - mtol), (polar + htol), arid, damp, young, open},
+	{"flowers:rose", vlo_cov, rare, 42, (spolar - htol), (temper + htol), arid, damp, (open - ltol), (open + ltol)},
+	{"flowers:dandelion_yellow", mid_cov, uncommon, 43, (spolar - mtol), (temper + htol), (arid - mtol), (arid + mtol), (open - ltol), (open + htol)},
+	{"flowers:dandelion_white", mid_cov, uncommon, 44, 2, (temper + htol), (average - htol), (damp + htol), (open - ltol), (open + htol)},
+	{"flowers:chrysanthemum_green", includer, super_rare, 45, temper, (stropic + htol), (damp - htol), damp, young, transition},
+	--crops
+	{"farming:wheat_8", super_rare, includer, 49, (temper - mtol), (temper + htol), (dry - ltol), (dry + htol), open, (open + ltol)},
+	{"farming:cotton_8", super_rare, includer, 50, (stropic - mtol), (stropic + htol), (damp - htol), (damp + mtol), open, (open + ltol)},
+}
+
+
+for i in ipairs(plantlist1) do
+	local lnodes = plantlist1[i][1]
+	local lcover = plantlist1[i][2]
+	local ldensity = plantlist1[i][3]
+	local lpriority = plantlist1[i][4]
+	local temp_min = plantlist1[i][5]
+	local temp_max = plantlist1[i][6]
+	local hum_min = plantlist1[i][7]
+	local hum_max = plantlist1[i][8]
+	local dist_min = plantlist1[i][9]
+	local dist_max = plantlist1[i][10]
+
 	mgtec.register_plant({
-		nodes = { "default:grass_"..i},
-		cover = 0.05,
-		density = 0.045,
-		priority = 64,
+		nodes = lnodes,
+		cover = lcover,
+		density = ldensity,
+		priority = lpriority,
 		check = function(t, pos)
-			return t.temp > 4 and t.humidity > 45 and t.disturb > 10 and (t.nodu ==  c_dirtgr or t.nodu ==  c_dirtdgr or t.nodu == c_dirtlit or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone)
+			return
+			t.temp > temp_min
+			and t.temp < temp_max
+			and t.humidity > hum_min
+			and t.humidity < hum_max
+			and t.disturb > dist_min
+			and t.disturb < dist_max
+			and (t.nodu == c_dirtlit
+				or t.nodu == c_dirtconlit
+			  or t.nodu == c_dirtgr
+				or t.nodu == c_dirtdgr
+				or t.nodu == c_dirtsno
+				or t.nodu == c_permamoss)
 		end,
 	})
 end
 
--- Grass (dry)
--- cold to tropics with average or less water (but not none), high to medium disturbance
-for i = 1, 5 do
+
+
+
+
+--Normal soils and desert sands,
+local plantlist2 = {
+	--Dry grass ..higher numbered grass is taller
+	{"default:dry_grass_1", mid_cov, uncommon, 21, (spolar - htol), (tropic + htol), (arid - mtol), (average + ltol), (old - ltol), (open + htol)},
+	{"default:dry_grass_2", mid_cov, uncommon, 22, (spolar - mtol), (tropic + htol), (arid - ltol), (average), (young - mtol), (open + htol)},
+	{"default:dry_grass_3", mid_cov, uncommon, 23, (spolar - ltol), (tropic + htol), (arid), (average - ltol), (young - ltol), (open + mtol)},
+	{"default:dry_grass_4", mid_cov, uncommon, 24, (spolar), (tropic + htol), (arid + ltol), (average - ltol), (young), (open)},
+	{"default:dry_grass_5", mid_cov, uncommon, 25, (spolar + ltol), (tropic + htol), (arid + mtol), (average - ltol), (young), (open- ltol)},
+
+}
+
+for i in ipairs(plantlist2) do
+	local lnodes = plantlist2[i][1]
+	local lcover = plantlist2[i][2]
+	local ldensity = plantlist2[i][3]
+	local lpriority = plantlist2[i][4]
+	local temp_min = plantlist2[i][5]
+	local temp_max = plantlist2[i][6]
+	local hum_min = plantlist2[i][7]
+	local hum_max = plantlist2[i][8]
+	local dist_min = plantlist2[i][9]
+	local dist_max = plantlist2[i][10]
+
 	mgtec.register_plant({
-		nodes = { "default:dry_grass_"..i},
-		cover = 0.05,
-		density = 0.045,
-		priority = 63,
+		nodes = lnodes,
+		cover = lcover,
+		density = ldensity,
+		priority = lpriority,
 		check = function(t, pos)
-			return t.temp > 18 and t.humidity > 10 and t.humidity < 55 and t.disturb > 10 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_dsand or t.nodu == c_dirtlit or t.nodu == c_dirtconlit)
+			return
+			t.temp > temp_min
+			and t.temp < temp_max
+			and t.humidity > hum_min
+			and t.humidity < hum_max
+			and t.disturb > dist_min
+			and t.disturb < dist_max
+			and (t.nodu == c_dirtlit
+				or t.nodu == c_dirtconlit
+			  or t.nodu == c_dirtgr
+				or t.nodu == c_dirtdgr
+				or t.nodu == c_dsand
+				or t.nodu == c_sand2)
 		end,
 	})
 end
 
--- Marram Grass
---
-for i = 1, 3 do
+
+--Sea Shore Sand
+local plantlist3 = {
+	--Marram ..higher numbered grass is taller
+	{"default:marram_grass_1", mid_cov, uncommon, 51, (spolar - htol), (tropic + htol), arid, swamp, 2, barren},
+	{"default:marram_grass_2", mid_cov, uncommon, 52, (spolar - mtol), (tropic + mtol), (arid + ltol), (swamp - ltol), 1, barren},
+	{"default:marram_grass_3", mid_cov, uncommon, 53, (spolar - ltol), (tropic + ltol), (arid + mtol), (swamp - mtol), 0, barren},
+}
+
+for i in ipairs(plantlist3) do
+	local lnodes = plantlist3[i][1]
+	local lcover = plantlist3[i][2]
+	local ldensity = plantlist3[i][3]
+	local lpriority = plantlist3[i][4]
+	local temp_min = plantlist3[i][5]
+	local temp_max = plantlist3[i][6]
+	local hum_min = plantlist3[i][7]
+	local hum_max = plantlist3[i][8]
+	local dist_min = plantlist3[i][9]
+	local dist_max = plantlist3[i][10]
+
 	mgtec.register_plant({
-		nodes = { "default:marram_grass_"..i},
-		cover = 0.05,
-		density = 0.045,
-		priority = 63,
+		nodes = lnodes,
+		cover = lcover,
+		density = ldensity,
+		priority = lpriority,
 		check = function(t, pos)
-			return t.temp > 15 and t.humidity > 20 and t.humidity < 90 and t.disturb < 60 and (t.nodu == c_sand) and pos.y < 3 and pos.y > 0
+			return
+			t.temp > temp_min
+			and t.temp < temp_max
+			and t.humidity > hum_min
+			and t.humidity < hum_max
+			and t.disturb > dist_min
+			and t.disturb < dist_max
+			and t.nodu == c_sand
+			and pos.y < 5
+			and pos.y > 0
 		end,
 	})
 end
 
--- Fern
--- low disturbance, wet
-for i = 1, 3 do
-	mgtec.register_plant({
-		nodes = { "default:fern_"..i},
-		cover = 0.05,
-		density = 0.045,
-		priority = 63,
-		check = function(t, pos)
-			return t.temp > 45 and t.humidity > 45 and t.disturb < 30 and (t.nodu == c_dirtgr or t.nodu == c_dirtlit or t.nodu == c_dirtconlit)
-		end,
-	})
-end
 
-
+--Weirdos Plants
 --Dry shrub
 -- dead stuff turns up all over the place
 mgtec.register_plant({
 	nodes = {"default:dry_shrub"},
-	cover = 0.01,
-	density = 0.005,
-	priority = 62,
+	cover = vlo_cov,
+	density = rare,
+	priority = 54,
 	check = function(t, pos)
 		return t.nodu == c_permamoss or t.nodu == c_permastone or t.nodu == c_dsand or t.nodu == c_sand2 or t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_sand or t.nodu == c_dirtsno or t.nodu == c_gravel or t.nodu == c_dirtconlit
 	end,
 })
 
---TEST
---[[
-mgtec.register_plant({
-	nodes = {"default:bush_stem"},
-	cover = 0.01,
-	density = 0.5,
-	priority = 99,
-	check = function(t, pos)
-		return t.nodu == c_permamoss or t.nodu == c_permastone
-	end,
-})
-]]
-
-
-
-----================================================================
---Bushes
-
---Bush
--- cold to subtropics, medium water, medium disturbance
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:bush_stem",
-		leaves = "default:bush_leaves",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = woden,
-	priority = 69,
-	check = function(t, pos)
-		return t.temp > 15 and t.temp < 65 and t.humidity > 25 and t.disturb > 25 and t.disturb < 85 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = 1--math.floor(12 + 1 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
----
--- Acacia Bush
--- temperate to tropics, medium water or lo, high disturbance
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:acacia_bush_stem",
-		leaves = "default:acacia_bush_leaves",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = woden,
-	priority = 68,
-	check = function(t, pos)
-		return t.temp > 55 and t.humidity > 15 and t.humidity < 80 and t.disturb > 28 and t.disturb < 90 and (t.nodu ==  c_dirtgr or t.nodu ==  c_dirtdgr or t.nodu == c_dirtlit or t.nodu == c_dirtconlit)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = 1--math.floor(12 + 1 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
-
----
--- Pine Bush
--- cold, dry, high disturbance
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:pine_bush_stem",
-		leaves = "default:pine_bush_needles",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = woden,
-	priority = 68,
-	check = function(t, pos)
-		return t.temp > 5 and t.temp < 40 and t.humidity > 7 and t.humidity < 40 and t.disturb > 28 and t.disturb < 90 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = 1--math.floor(12 + 1 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
-
----
--- Blueberry Bush
--- cold, wet, medium disturbance
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:blueberry_bush_leaves",
-		leaves = "default:blueberry_bush_leaves_with_berries",
-		air = "air", ignore = "ignore",
-	},
-	cover = wodcov,
-	density = woden,
-	priority = 68,
-	check = function(t, pos)
-		return t.temp > 25 and t.temp < 70 and t.humidity > 40 and t.disturb > 10 and t.disturb < 70 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = 1--math.floor(12 + 1 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
-
---
 --Cactus... arid specialist... low disturbance
 mgtec.register_plant({
 	nodes = {"default:cactus", n= math.random(1,4)},
-	cover = savcov,
-	density = savden,
-	priority = 67,
+	cover = lo_cov,
+	density = rare,
+	priority = 55,
 	check = function(t, pos)
-		return t.temp > 55 and t.humidity < 20 and t.disturb < 60 and (t.nodu ==  c_dirtlit or t.nodu ==  c_dsand or t.nodu ==  c_dirtdgr or t.nodu ==  c_gravel or t.nodu == c_dirtconlit)
+		return t.temp > (stropic - htol) and t.humidity > 1 and t.humidity < arid and t.disturb < transition and (t.nodu ==  c_dsand or t.nodu ==  c_dirtdgr or t.nodu ==  c_gravel)
 	end,
 })
 
---- Cactus "tree" ...arid specialist... low disturbance... (more restricted)
+--papyrus
+mgtec.register_plant({
+	nodes = {"default:papyrus", n= math.random(3,5) },
+	cover = vlo_cov,
+	density = abundant,
+	priority = 56,
+	check = function(t, pos)
+		return t.temp > temper and t.humidity > (damp - htol) and pos.y < 5 and pos.y > 1 and t.disturb > young and t.disturb < open and (t.nodu == c_clay or t.nodu ==  c_dirt or t.nodu ==  c_dirtlit or t.nodu ==  c_sand)
+	end,
+})
+
+--waterlily
+mgtec.register_plant({
+	nodes = {"flowers:waterlily"},
+	cover = vlo_cov,
+	density = abundant,
+	priority = 57,
+	check = function(t, pos)
+		return t.temp > (stropic-ltol) and t.humidity > damp and t.disturb > young and t.disturb < open and t.nodu == c_river
+	end,
+})
+
+-- mushrooms
+--anywhere with enough warmth and moisture to allow it
+mgtec.register_plant({
+	nodes = {"flowers:mushroom_brown", "flowers:mushroom_red"},
+	cover = vlo_cov,
+	density = rare,
+	priority = 58,
+	check = function(t, pos)
+		return t.temp > 1 and t.humidity > dry and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone or t.nodu == c_clay)
+	end,
+})
+
+
+
+--Tree type trees. Trees and Bushes ..Normal (for soils).. forests and grasslands and cold
+local bushlist1 = {
+	--giant aspen
+	{"default:aspen_tree", "default:aspen_leaves", vhi_cov, common, 8, (spolar - mtol), (spolar + mtol), (damp - mtol), (swamp + htol), 0, (old + ltol), 16, 4},
+	--adult jungletree
+	{"default:jungletree", "default:jungleleaves", vhi_cov, common, 10, (stropic - htol), (tropic + htol), (damp - htol), (swamp + htol), (old - ltol), transition,  13, 5},
+	--giant jungletree
+	{"default:jungletree", "default:jungleleaves", hi_cov, common, 11, (stropic - htol), (tropic + htol), (damp - htol), (swamp + htol), 0, (old + mtol), 19, 1},
+	--juvenile acacia_tree---
+	{"default:acacia_tree", "default:acacia_leaves", hi_cov, scattered, 12, (stropic - htol), (tropic + mtol), (dry - htol), (dry + htol), (old + ltol), (young + ltol),  5, 2},
+	--adult acacia_tree
+	{"default:acacia_tree", "default:acacia_leaves", vhi_cov, uncommon, 13, (stropic - htol), (tropic + mtol), (dry - htol), (dry + htol), old, young, 12, 3},
+	--giant acacia_tree
+	{"default:acacia_tree", "default:acacia_leaves", vhi_cov, common, 14, (stropic - ltol), (tropic + mtol), dry, (dry + htol), 0, (old + ltol), 16, 3},
+
+}
+
+
+for i in ipairs(bushlist1) do
+	local lnodes_tr = bushlist1[i][1]
+	local lnodes_le = bushlist1[i][2]
+	local lcover = bushlist1[i][3]
+	local ldensity = bushlist1[i][4]
+	local lpriority = bushlist1[i][5]
+	local temp_min = bushlist1[i][6]
+	local temp_max = bushlist1[i][7]
+	local hum_min = bushlist1[i][8]
+	local hum_max = bushlist1[i][9]
+	local dist_min = bushlist1[i][10]
+	local dist_max = bushlist1[i][11]
+	local lheight = bushlist1[i][12]
+	local hvar = bushlist1[i][13]
+
+	mgtec.register_plant({
+		nodes = {
+			trunk = lnodes_tr,
+			leaves = lnodes_le,
+			air = "air", ignore = "ignore",
+		},
+		cover = lcover,
+		density = ldensity,
+		priority = lpriority,
+		check = function(t, pos)
+			return
+			t.temp > temp_min
+			and t.temp < temp_max
+			and t.humidity > hum_min
+			and t.humidity < hum_max
+			and t.disturb > dist_min
+			and t.disturb < dist_max
+			and (t.nodu == c_dirtlit
+				or t.nodu == c_dirtconlit
+			  or t.nodu == c_dirtgr
+				or t.nodu == c_dirtdgr
+				or t.nodu == c_dirtsno
+				or t.nodu == c_permamoss)
+		end,
+		grow = function(nodes, pos, data, data2,area)
+			local rand = math.random()
+			local height = math.floor(lheight + (hvar * rand))
+			local radius = 3 + (1 * rand)
+
+			mgtec.make_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
+
+		end,
+	})
+end
+
+
+--Layered ...Trees and Bushes ..Normal (for soils).. forests and grasslands and cold
+local bushlist2 = {
+	--bushes
+	{"default:bush_stem", "default:bush_leaves", mid_cov, scattered, 1, (spolar - mtol), (stropic - mtol), (average - htol), (damp + mtol), (transition - mtol), (open + ltol), 1,0},
+	{"default:acacia_bush_stem", "default:acacia_bush_leaves", hi_cov, scattered, 2, (temper - mtol), (tropic + htol), (dry - htol), (average + ltol), (transition - mtol), (open + ltol), 1, 0},
+	{"default:pine_bush_stem", "default:pine_bush_needles", hi_cov, scattered, 3, (spolar - htol), (temper + ltol), (dry - htol), (average + mtol), (transition - mtol), (open + ltol), 1, 0},
+	{"default:blueberry_bush_leaves", "default:blueberry_bush_leaves_with_berries", vlo_cov, rare, 4, (spolar - mtol), (temper + htol), (damp - mtol), (damp + htol), (young - ltol), (transition + ltol), 1, 0},
+	--juvenile aspen---
+	{"default:aspen_tree", "default:aspen_leaves", hi_cov, common, 6, (spolar - mtol), (temper + mtol), (average - mtol), (swamp + htol), (young - ltol), (transition + ltol), 6, 2},
+	--adult aspen
+	{"default:aspen_tree", "default:aspen_leaves", hi_cov, common, 7, (spolar - mtol), (spolar + htol), (average - mtol), (swamp + htol), (old - ltol), (young + mtol), 13, 3},
+	--juvenile jungletree---
+	{"default:jungletree", "default:jungleleaves", hi_cov, common, 9, (stropic - htol), (tropic + htol), (damp - htol), (swamp + htol), (young - ltol), (transition + ltol), 12, 5},
+	--juvenile pine---
+	{"default:pine_tree", "default:pine_needles", vhi_cov, scattered, 18, (spolar - htol), (temper + mtol), (dry - htol), (average + ltol), (young - ltol), (young + ltol), 6, 1},
+	--adult pine
+	{"default:pine_tree", "default:pine_needles", hi_cov, uncommon, 19, (spolar - htol), (temper + mtol), (dry - htol), (average + ltol), (old - ltol), young, 15, 1},
+	--giant pine
+	{"default:pine_tree", "default:pine_needles", hi_cov, common, 20, (spolar - htol), (temper + mtol), (dry - ltol), (average + ltol), 0, (old + ltol), 18, 1},
+
+}
+
+
+for i in ipairs(bushlist2) do
+	local lnodes_tr = bushlist2[i][1]
+	local lnodes_le = bushlist2[i][2]
+	local lcover = bushlist2[i][3]
+	local ldensity = bushlist2[i][4]
+	local lpriority = bushlist2[i][5]
+	local temp_min = bushlist2[i][6]
+	local temp_max = bushlist2[i][7]
+	local hum_min = bushlist2[i][8]
+	local hum_max = bushlist2[i][9]
+	local dist_min = bushlist2[i][10]
+	local dist_max = bushlist2[i][11]
+	local lheight = bushlist2[i][12]
+	local hvar = bushlist2[i][13]
+
+
+	mgtec.register_plant({
+		nodes = {
+			trunk = lnodes_tr,
+			leaves = lnodes_le,
+			air = "air", ignore = "ignore",
+		},
+		cover = lcover,
+		density = ldensity,
+		priority = lpriority,
+		check = function(t, pos)
+			return
+			t.temp > temp_min
+			and t.temp < temp_max
+			and t.humidity > hum_min
+			and t.humidity < hum_max
+			and t.disturb > dist_min
+			and t.disturb < dist_max
+			and (t.nodu == c_dirtlit
+				or t.nodu == c_dirtconlit
+			  or t.nodu == c_dirtgr
+				or t.nodu == c_dirtdgr
+				or t.nodu == c_dirtsno
+				or t.nodu == c_permamoss)
+		end,
+		grow = function(nodes, pos, data, data2,area)
+			local rand = math.random()
+			local height = math.floor(lheight + (hvar * rand))
+			local radius = 3 + (1 * rand)
+
+			mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
+
+		end,
+	})
+end
+
+
+--Fruiting....Trees and Bushes ..Normal (for soils).. forests and grasslands and cold
+local bushlist3 = {
+	--juvenile apple---
+	{"default:tree", "default:leaves", hi_cov, uncommon, 15, (temper - htol), (stropic + ltol), (average - htol), (damp + mtol), (young + ltol), (transition + mtol), 6, 2, "default:apple"},
+	--adult apple
+	{"default:tree", "default:leaves", hi_cov, common, 16, (temper - htol), (temper + htol), (average - htol), (damp + mtol), (old + mtol), (young + mtol), 12, 5, "default:apple"},
+	--giant apple
+	{"default:tree", "default:leaves", hi_cov, uncommon, 17, (temper - htol), (temper + mtol), (average - htol), (damp + mtol), 0, (old + ltol), 16, 3, "default:apple"},
+
+}
+
+
+for i in ipairs(bushlist3) do
+	local lnodes_tr = bushlist3[i][1]
+	local lnodes_le = bushlist3[i][2]
+	local lcover = bushlist3[i][3]
+	local ldensity = bushlist3[i][4]
+	local lpriority = bushlist3[i][5]
+	local temp_min = bushlist3[i][6]
+	local temp_max = bushlist3[i][7]
+	local hum_min = bushlist3[i][8]
+	local hum_max = bushlist3[i][9]
+	local dist_min = bushlist3[i][10]
+	local dist_max = bushlist3[i][11]
+	local lheight = bushlist3[i][12]
+	local hvar = bushlist3[i][13]
+	local lnodes_fr = bushlist3[i][14]
+
+	mgtec.register_plant({
+		nodes = {
+			trunk = lnodes_tr,
+			leaves = lnodes_le,
+			fruit = lnodes_fr,
+			air = "air", ignore = "ignore",
+		},
+		cover = lcover,
+		density = ldensity,
+		priority = lpriority,
+		check = function(t, pos)
+			return
+			t.temp > temp_min
+			and t.temp < temp_max
+			and t.humidity > hum_min
+			and t.humidity < hum_max
+			and t.disturb > dist_min
+			and t.disturb < dist_max
+			and (t.nodu == c_dirtlit
+				or t.nodu == c_dirtconlit
+			  or t.nodu == c_dirtgr
+				or t.nodu == c_dirtdgr
+				or t.nodu == c_dirtsno
+				or t.nodu == c_permamoss)
+		end,
+		grow = function(nodes, pos, data, data2,area)
+			local rand = math.random()
+			local height = math.floor(lheight + (hvar * rand))
+			local radius = 3 + (1 * rand)
+
+			mgtec.make_apple_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.fruit, nodes.air, nodes.ignore)
+
+		end,
+	})
+end
+
+
+
+
+--Weirdo Trees
+--- Cactus "tree" ...arid specialist...
 mgtec.register_plant({
 	nodes = {
 		trunk = "default:cactus",
 		leaves = "default:cactus",
 		air = "air", ignore = "ignore",
 	},
-	cover = savcov,
-	density = savden,
-	priority = 66,
+	cover = lo_cov,
+	density = super_rare,
+	priority = 5,
 	check = function(t, pos)
-		return t.temp > 45 and t.humidity > 5 and t.humidity < 25 and t.disturb < 5 and (t.nodu ==  c_dirtlit or t.nodu == c_dsand or t.nodu ==  c_dirtdgr or t.nodu ==  c_gravel or t.nodu == c_dirtconlit)
+		return t.temp > stropic and t.humidity > arid and t.humidity < dry and t.disturb < old and (t.nodu == c_dsand or t.nodu ==  c_dirtdgr)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -388,565 +662,7 @@ mgtec.register_plant({
 })
 
 
----========================================================
---Flowers
 
---
---Viola
--- temperate to cold, medium to dry, high disturbance
-mgtec.register_plant({
-	nodes = { "flowers:viola"},
-	cover = 0.001,
-	density = 0.005,
-	priority = 75,
-	check = function(t, pos)
-		return t.temp > 25 and t.temp < 75 and t.humidity > 21 and t.humidity < 50 and t.disturb > 30 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirtdgr or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone)
-	end,
-})
---
---flowers geranium
--- cold temperate to cold, medium wet, medium disturbance
-mgtec.register_plant({
-	nodes = {"flowers:geranium"},
-	cover = 0.001,
-	density = 0.005,
-	priority = 74,
-	check = function(t, pos)
-		return t.temp > 15 and t.temp < 60 and t.humidity > 45 and t.humidity < 80 and t.disturb > 20 and t.disturb < 80 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirtdgr or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone)
-	end,
-})
---
---tulip
--- cold to temperate, arid, high disturbance
-mgtec.register_plant({
-	nodes = {"flowers:tulip"},
-	cover = 0.001,
-	density = 0.005,
-	priority = 73,
-	check = function(t, pos)
-		return t.temp > 10 and t.temp < 70 and t.humidity > 15 and t.humidity < 40 and t.disturb > 60 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirtdgr or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone)
-	end,
-})
-
---
---tulip black
---low disturbance, high altitude
-mgtec.register_plant({
-	nodes = {"flowers:tulip_black"},
-	cover = 0.001,
-	density = 0.005,
-	priority = 76,
-	check = function(t, pos)
-		return t.disturb < 50 and pos.y > 300 and (t.nodu == c_dirtsno)
-	end,
-})
---
-
----
---Rose
---make sure it has a wide range bc need red dye for beds.
--- cold to  subtropic... average to arid, high half of disturbance
-mgtec.register_plant({
-	nodes = {"flowers:rose"},
-	cover = 0.001,
-	density = 0.005,
-	priority = 72,
-	check = function(t, pos)
-		return t.temp > 15 and t.temp < 75 and t.humidity > 15 and t.humidity < 55 and t.disturb > 30 and t.disturb < 90 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_gravel or t.nodu == c_dirtsno or t.nodu == c_dirtlit or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone)
-	end,
-})
---
---dandelion_yellow
--- temperate (broad), average to dry, high disturbance
-mgtec.register_plant({
-	nodes = {"flowers:dandelion_yellow"},
-	cover = 0.001,
-	density = 0.005,
-	priority = 71,
-	check = function(t, pos)
-		return t.temp > 25 and t.temp < 75 and t.humidity > 15 and t.humidity < 65 and t.disturb > 40 and (t.nodu == c_dsand or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtlit or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone)
-	end,
-})
----
---dandelion_white
--- daisy... subpolar to temperate, damp, high disturbance
-mgtec.register_plant({
-	nodes = {"flowers:dandelion_white"},
-	cover = 0.001,
-	density = 0.005,
-	priority = 70,
-	check = function(t, pos)
-		return t.temp > 5 and t.temp < 70 and t.humidity > 55 and t.humidity < 85 and t.disturb > 40 and t.disturb < 90 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_gravel or t.nodu == c_dirtsno or t.nodu == c_dirtlit or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone)
-	end,
-})
---
-
----
---chrysanthemum_green
--- temperate, low disturbance
-mgtec.register_plant({
-	nodes = {"flowers:chrysanthemum_green"},
-	cover = 0.001,
-	density = 0.005,
-	priority = 77,
-	check = function(t, pos)
-		return t.temp > 40 and t.temp < 60 and t.humidity > 40 and t.humidity < 60 and t.disturb > 1 and t.disturb < 30 and (t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirtlit or t.nodu == c_dirtconlit)
-	end,
-})
-
---===============================================
---MISC
---
-
---
---kelp
---[[
-mgtec.register_plant({
-	nodes = {"default:sand_with_kelp"},
-	cover = 0.15,
-	density = 0.1,
-	priority = 61,
-	check = function(t, pos)
-		return t.temp < 50 and pos.y < -5 and pos.y > -20 and t.disturb > 1 and t.disturb < 100 and (t.nodu == c_sand)
-	end,
-})
-]]
---
---papyrus
--- warm temperate to tropic, wet, higher half of disturbance
-mgtec.register_plant({
-	nodes = {"default:papyrus", n= math.random(2,4) },
-	cover = 0.06,
-	density = 0.05,
-	priority = 94,
-	check = function(t, pos)
-		return t.temp > 50 and t.humidity > 50 and pos.y < 6 and pos.y > 1 and t.disturb > 25 and t.disturb < 45 and (t.nodu == c_clay or t.nodu ==  c_dirt or t.nodu ==  c_dirtlit)
-	end,
-})
-
-
---temperate to tropical, swamp
-mgtec.register_plant({
-	nodes = {"flowers:waterlily"},
-	cover = 0.15,
-	density = 0.1,
-	priority = 61,
-	check = function(t, pos)
-		return t.temp > 80 and t.humidity > 80 and t.nodu == c_river
-	end,
-})
-
--- mushrooms
---anywhere with enough warmth and moisture to allow it
-mgtec.register_plant({
-	nodes = {"flowers:mushroom_brown", "flowers:mushroom_red"},
-	cover = 0.001,
-	density = 0.001,
-	priority = 93,
-	check = function(t, pos)
-		return t.temp > 5 and t.humidity > 25 and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone or t.nodu == c_sand2 or t.nodu == c_clay)
-	end,
-})
-
-
---Wheat
--- temperate, dry, high disturbance
-mgtec.register_plant({
-	nodes = {"farming:wheat_8"},
-	cover = 0.003,
-	density = 0.002,
-	priority = 92,
-	check = function(t, pos)
-		return t.temp > 30 and t.temp < 80 and t.humidity > 20 and t.humidity < 40 and t.disturb > 70 and t.disturb < 80 and (t.nodu == c_dirtgr or t.nodu == c_dirtdgr)
-	end,
-})
----
---Cotton
--- sub to tropical, average to damp, medium disturb
-mgtec.register_plant({
-	nodes = {"farming:cotton_8"},
-	cover = 0.01,
-	density = 0.006,
-	priority = 91,
-	check = function(t, pos)
-		return t.temp > 65 and t.humidity > 55 and t.disturb > 15 and t.disturb < 65 and (t.nodu == c_dirtlit or t.nodu == c_dirtdgr or t.nodu == c_dirtgr)
-	end,
-})
-
-
----===============================================================
---Tree Species.
--- juvenile. (smaller and possibly different form. mgtec.make_layered_tree,  or mgtec.make_tree2, or mgtec.make_apple_tree for apple )
--- adult (medium size and possibly different form. mgtec.make_layered_tree,  or mgtec.make_tree2, or mgtec.make_apple_tree for apple )
--- giant. (tall, mgtec.make_tree ... adds roots)
-
--- Juveniles have a broader range, giants more restricted to ideal sites. Juveniles dominate in disturbed areas, giants in stable areas.
---
---forest disturbance. base
-local fdist = 35
---juvenile...
-local fdistj = 48
---giant
-local fdistg = 18
-
-
-------------------------------------------------------
--- Aspen. (that looks like birch!)
--- dense forest, temperate to subpolar, medium to wet, high to medium disturbance.
-
---Adult Aspen Tree.
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:aspen_tree",
-		leaves = "default:aspen_leaves",
-		air = "air", ignore = "ignore",
-	},
-	cover = wodcov,
-	density = woden,
-	priority = 77,
-	check = function(t, pos)
-		return t.temp > (spolar - mtol) and t.temp < (spolar + mtol) and t.humidity > (damp - htol) and t.disturb < (fdist + 17) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirt)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(13 + 3 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
---juvenile Aspen Tree.
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:aspen_tree",
-		leaves = "default:aspen_leaves",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = junden,
-	priority = 76,
-	check = function(t, pos)
-		return t.temp > (spolar - mtol) and t.temp < (temper + mtol) and t.humidity > (average) and t.disturb > (fdistj - (fdistj/2)) and t.disturb < (fdistj + 15) and  (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirt or t.nodu == c_dirtconlit)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(6 + 2 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
-
---Giant Aspen Tree.
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:aspen_tree",
-		leaves = "default:aspen_leaves",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = junden,
-	priority = 78,
-	check = function(t, pos)
-		return t.temp > (spolar - ltol) and t.temp < (spolar + ltol) and t.humidity > (damp - ltol) and t.disturb < (fdistg + 15) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtsno or t.nodu == c_dirt)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(16 + 4 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
-------------------------------------------------------------
--- jungletree
--- dense forest, warm temperate to tropic, medium to wet, low to medium disturbance.
-
---Adult Jungle Tree.
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:jungletree",
-		leaves = "default:jungleleaves",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = junden,
-	priority = 80,
-	check = function(t, pos)
-		return t.temp > (stropic - mtol) and t.temp < 99 and t.humidity > (damp - mtol) and t.disturb < (fdistj + 17) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(13 + 5 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
---juvenile Jungle Tree.
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:jungletree",
-		leaves = "default:jungleleaves",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = junden,
-	priority = 79,
-	check = function(t, pos)
-		return t.temp > (stropic - htol) and t.humidity > (damp - htol) and t.disturb > (fdistj - (fdistj/2)) and t.disturb < (fdistj + (fdistj/2)) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(10 + 5 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
---Giant Jungle Tree.
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:jungletree",
-		leaves = "default:jungleleaves",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = junden,
-	priority = 81,
-	check = function(t, pos)
-		return t.temp > (stropic - ltol) and t.temp < 98 and t.humidity > (damp - ltol) and t.disturb < (fdistg + 15) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(19 + 1 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
---------------------------------------------------------
--- acacia_tree
--- woodland forest, warm temperate to tropic, medium to dry, low disturbance.
-
---Acacia Adult
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:acacia_tree",
-		leaves = "default:acacia_leaves",
-		air = "air", ignore = "ignore",
-	},
-	cover = wodcov,
-	density = woden,
-	priority = 83,
-	check = function(t, pos)
-		return t.temp > (stropic - mtol) and t.temp < (stropic + htol) and t.humidity > (dry - ltol) and t.humidity < (average + ltol) and t.disturb < (fdist + 5) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirt or t.nodu == c_dirtconlit)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(15 + 1 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_tree2(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
---Acacia Juvenile
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:acacia_tree",
-		leaves = "default:acacia_leaves",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = junden,
-	priority = 82,
-	check = function(t, pos)
-		return t.temp > (stropic - mtol) and t.temp < 100 and t.humidity > (dry - mtol) and t.humidity < (average + htol) and t.disturb > (fdist - (fdistj/2)) and t.disturb < (fdistg + 10) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirt or t.nodu == c_dirtconlit)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(5 + 1 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_tree2(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
-
---Acacia Giant
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:acacia_tree",
-		leaves = "default:acacia_leaves",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = junden,
-	priority = 84,
-	check = function(t, pos)
-		return t.temp > (stropic - ltol) and t.temp < (stropic + htol) and t.humidity > (dry - ltol) and t.humidity < (damp + htol) and t.disturb < (fdistg + 5) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirt or t.nodu == c_dirtconlit)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(15 + 5 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
-
---------------------------------------------------------------
--- Apple
--- dense forest, temperate, medium disturbance.
-
-
-
---Adult Apple.
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:tree",
-		leaves = "default:leaves",
-		fruit = "default:apple",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = junden,
-	priority = 89,
-	check = function(t, pos)
-		return t.temp > (temper - mtol) and t.temp < (temper + htol) and t.humidity > (average - mtol) and t.humidity < (average + mtol) and t.disturb < (fdist + 17) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(12 + 5 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_apple_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.fruit, nodes.air, nodes.ignore)
-	end,
-})
-
---Juvenile Apple.
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:tree",
-		leaves = "default:leaves",
-		fruit = "default:apple",
-		air = "air", ignore = "ignore",
-	},
-	cover = wodcov,
-	density = woden,
-	priority = 88,
-	check = function(t, pos)
-		return t.temp > (temper - htol) and t.temp < (stropic + mtol) and t.humidity > (dry - ltol) and t.humidity < (damp + htol) and t.disturb > (fdistj -(fdistj/2)) and t.disturb < (fdistj + 15) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(5 + 2 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_apple_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.fruit, nodes.air, nodes.ignore)
-	end,
-})
-
---Giant Apple.
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:tree",
-		leaves = "default:leaves",
-		fruit = "default:apple",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = junden,
-	priority = 90,
-	check = function(t, pos)
-		return t.temp > (temper - ltol) and t.temp < (temper + htol) and t.humidity > (average - ltol) and t.humidity < (average + ltol) and t.disturb < (fdistg + 5) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(18 + 2 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_apple_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.fruit, nodes.air, nodes.ignore)
-	end,
-})
-
------------------------------------------------------------------
--- pine_tree
--- dense forest, temperate to subpolar, medium to arid, low disturbance.
-
---Adult Pine Tree.
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:pine_tree",
-		leaves = "default:pine_needles",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = junden,
-	priority = 86,
-	check = function(t, pos)
-		return t.temp > (spolar - mtol) and t.temp < (spolar + htol) and t.humidity > (dry - ltol) and t.humidity < (average + mtol) and t.disturb < (fdist - 10) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(15 + 1 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
---Juvenile Pine Tree.
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:pine_tree",
-		leaves = "default:pine_needles",
-		air = "air", ignore = "ignore",
-	},
-	cover = wodcov,
-	density = woden,
-	priority = 85,
-	check = function(t, pos)
-		return t.temp > (spolar - mtol) and t.temp < (spolar + htol) and t.humidity > (dry - mtol) and t.humidity < (average + htol) and t.disturb > (fdistg - (fdistj/2)) and t.disturb < (fdistg + 15) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit or t.nodu == c_permamoss)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(15 + 1 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
-
---Giant Pine Tree.
-mgtec.register_plant({
-	nodes = {
-		trunk = "default:pine_tree",
-		leaves = "default:pine_needles",
-		air = "air", ignore = "ignore",
-	},
-	cover = juncov,
-	density = junden,
-	priority = 87,
-	check = function(t, pos)
-		return t.temp > (spolar - ltol) and t.temp < (spolar + ltol) and t.humidity > (dry - ltol) and t.humidity < (average + ltol) and t.disturb < (fdistg + 17) and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit)
-	end,
-	grow = function(nodes, pos, data, data2,area)
-		local rand = math.random()
-		local height = math.floor(18 + 1 * rand)
-		local radius = 3 + 1 * rand
-
-		mgtec.make_layered_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
-	end,
-})
 
 
 --[[
