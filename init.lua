@@ -53,7 +53,8 @@ local MAXMAG = -15000
 -- Wave Roll Size: i.e Period
 --Controls distance between ranges, and thickness.
 --This is the period at the map centre. Grows to double at map edges
-local XRS = 870
+--will effect gradient and number of major mt ranges
+local XRS = 617--870
 
 --Where does the continental shelf end?
 local SHELFX = 24000
@@ -251,21 +252,21 @@ function climate(x, z, y, n_terr, n_terr2)
 	-- hill tops catch rain but are more disturbed
 	if y > 490 or (y < 10 and y > -3) then
 		--alpine (force snowy)
-		if y > 1000 + math.random(-30, 5) then
+		if y > 1100 + math.random(-30, 5) then
 			hum = hum + 48
 			temp = temp - 30
 			distu = distu + 12
 			--subalpine
-		elseif y > 900 + blend then
+		elseif y > 1000 + blend then
 			hum = hum + 24
 			temp = temp - 15
 			distu = distu + 6
-		elseif y > 800 + blend then
+		elseif y > 900 + blend then
 			hum = hum + 12
 			temp = temp - 5
 			distu = distu + 3
 			--montane
-		elseif y > 650 + blend then
+		elseif y > 700 + blend then
 			hum = hum + 6
 		elseif y > 500 + blend then
 			hum = hum + 3
@@ -519,7 +520,7 @@ minetest.register_on_mapgen_init(function(mapgen_params)
 
 
 	math.randomseed(mapgen_params.seed)
-  spawnpoint = {x = math.random(-18000, 18000), z = math.random(-18000, 18000)}
+  spawnpoint = {x = math.random(-19000, 19000), z = math.random(-22000, 22000)}
 
 
 	-- some things need to be random, but stay constant throughout the loop
@@ -530,11 +531,19 @@ minetest.register_on_mapgen_init(function(mapgen_params)
 		lakes = {}
 		for i = 0, num_lakes do
 			--keep back from "shelf" as the coastline is actually much further back
-		    lakes[i] = {x = math.random(-9000,9000), z = math.random(-20000,20000), r = math.random(1,5)}
-				--save location for bug checking
-				mod_storage:set_int("Lake"..i.."x", lakes[i].x)
-				mod_storage:set_int("Lake"..i.."z", lakes[i].z)
-				mod_storage:set_int("Lake"..i.."river", lakes[i].r)
+			--need to keep them out of main ranges...too much erosion.
+			--choose east or west.
+			if math.random(1,2) <=1 then
+				--west lake
+				lakes[i] = {x = math.random(-13000,-6000), z = math.random(-23000,23000), r = math.random(1,5)}
+			else
+				--East lake.
+				lakes[i] = {x = math.random(13000,6000), z = math.random(-23000,23000), r = math.random(1,5)}
+			end
+			--save location for bug checking
+			mod_storage:set_int("Lake"..i.."x", lakes[i].x)
+			mod_storage:set_int("Lake"..i.."z", lakes[i].z)
+			mod_storage:set_int("Lake"..i.."river", lakes[i].r)
 		end
 	end
 end)
@@ -701,7 +710,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--waves
 				local dwav = ((xwav ^ 2)*2.7) + ((xwav ^ 3)*8.5) + (mup*5)
 				--noise
-				local dnoi = ((n_terr ^3) + ((n_terr)*0.5) + ((n_terr2*n_terr)*0.78)) * 2 * whs
+				local dnoi = ((n_terr ^3) + ((n_terr)*0.5) + ((n_terr2*n_terr)*0.8)) * 4 * whs
 				--cliffs
 				local dclif1 = ((ab_stra^2)*0.6)
 				local dclif2 = ((ab_cave*ab_cave2)*0.08)
@@ -710,7 +719,9 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 
 				---Base Threshold (use for all of them now)
-				local t_base = 0.0108*y
+				--effects heights of landscape
+				--local t_base = 0.0108*y
+				local t_base = 0.0081*y
 
 
 
@@ -792,7 +803,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					--These are put in "manually" as doing it based on noise does not work well for rivers
 					--The point of these is:
 					-- to bring water to the dry interior, provide access, features of interest, greater altitude variation.
-					--they have a large erosion effect on the surrounding area.
+					--they have a large erosion effect on the surrounding area. So need very steep sides
 					------------------------------
 
 					--[[
@@ -851,7 +862,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					if not basin and not river_basin then
 						for n = 0, num_lakes do
 							local laked = -25 + (10 * n_terr2)
-		    			local laker = (160 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(55 + (5 * n_terr2))))
+		    			local laker = (160 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(200 + (10 * n_terr))))
 		    			if x < lakes[n].x + (laker*1.6) and x > lakes[n].x - (laker*1.6)
 							and z < lakes[n].z + laker and z > lakes[n].z - laker
 							and y > laked then
@@ -1915,7 +1926,7 @@ end
 
 -----------------------------------------------------------
 minetest.register_on_newplayer(function(player)
-	spawnplayer(player, 1600)
+	spawnplayer(player, 2100)
 
 
 	-- Get the inventory of the player
@@ -1935,7 +1946,7 @@ end)
 
 --default clouds are way too low...raise them
 local init_cloud = function(player)
-	player:set_clouds({color="#FFFFFFFC", density=0.40, height=1300, thickness=25, speed ={x=1, z=0}})
+	player:set_clouds({color="#FFFFFFFC", density=0.40, height=1500, thickness=25, speed ={x=1, z=0}})
 end
 
 --this is needed to stop it putting player at 0,0,0...but overrides bed save :-(
