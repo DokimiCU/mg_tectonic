@@ -266,7 +266,7 @@ function climate(x, z, y, n_terr, n_terr2)
 			temp = temp - 5
 			distu = distu + 3
 			--montane
-		elseif y > 700 + blend then
+		elseif y > 750 + blend then
 			hum = hum + 6
 		elseif y > 500 + blend then
 			hum = hum + 3
@@ -535,10 +535,10 @@ minetest.register_on_mapgen_init(function(mapgen_params)
 			--choose east or west.
 			if math.random(1,2) <=1 then
 				--west lake
-				lakes[i] = {x = math.random(-13000,-6000), z = math.random(-23000,23000), r = math.random(1,5)}
+				lakes[i] = {x = math.random(-13000,-5000), z = math.random(-23000,23000), r = math.random(1,5)}
 			else
 				--East lake.
-				lakes[i] = {x = math.random(13000,6000), z = math.random(-23000,23000), r = math.random(1,5)}
+				lakes[i] = {x = math.random(13000,5000), z = math.random(-23000,23000), r = math.random(1,5)}
 			end
 			--save location for bug checking
 			mod_storage:set_int("Lake"..i.."x", lakes[i].x)
@@ -693,6 +693,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 				--The Wave!
 				local xwav = (whs*math.cos(x/x_roll))    -- north south wave (main ranges)
+				local xwav2 = (whs*math.cos(x/(x_roll/6.89))) --smaller more detailed wave
 
 
 
@@ -708,11 +709,11 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--wave + raise + large hills 2 + sharp hills (moderated by large or gives sky needles) + cliffs 2
 
 				--waves
-				local dwav = ((xwav ^ 2)*2.7) + ((xwav ^ 3)*8.5) + (mup*5)
+				local dwav = ((xwav2 ^ 3)*1.67) + ((xwav ^ 3)*6.89) + (mup*9.54)
 				--noise
-				local dnoi = ((n_terr ^3) + ((n_terr)*0.5) + ((n_terr2*n_terr)*0.8)) * 4 * whs
+				local dnoi = ((n_terr ^3) + ((n_terr)*0.5) + ((n_terr2*n_terr)*0.8)) * 5.7 * whs
 				--cliffs
-				local dclif1 = ((ab_stra^2)*0.6)
+				local dclif1 = ((ab_stra^2)*0.5)
 				local dclif2 = ((ab_cave*ab_cave2)*0.08)
 
 				local den_base = dwav + dnoi - dclif1 - dclif2
@@ -720,8 +721,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 				---Base Threshold (use for all of them now)
 				--effects heights of landscape
-				--local t_base = 0.0108*y
-				local t_base = 0.0081*y
+				local t_base = 0.00905*y
 
 
 
@@ -1675,7 +1675,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 							--Forests..
 							--less disturbance. with enough moisture, not too cold.
-						elseif distu < 25 and hum > 35 and temp > 25 and temp < 90 then
+						elseif distu < 25 and hum > 30 and temp > 25 and temp < 90 then
 							--conifers... cold and dry
 							if temp < 40 and hum < 45 then
 								data[vi] = c_dirtconlit
@@ -1885,6 +1885,10 @@ function spawnplayer(player,alt)
 		--pos.x = spawnpoint.x + math.random(-500 , 500)
 		--pos.z = spawnpoint.z + math.random(-500, 500)
 
+
+		--local xtgr_spawn = 1-(math.abs(pos.x)/YMAX)
+		--alt = math.floor(alt * xtgr_spawn)
+
     for i = alt, 0,-1 do
 				alt = i
         pos.y = i
@@ -1926,7 +1930,8 @@ end
 
 -----------------------------------------------------------
 minetest.register_on_newplayer(function(player)
-	spawnplayer(player, 2100)
+
+	spawnplayer(player,2100)
 
 
 	-- Get the inventory of the player
