@@ -1148,7 +1148,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								if den_allu > t_base and nocave then
 
 									--strata splits..
-									local thick = 30 + (30*n_strata)
+									local thick = 31 + (29*n_strata)
 									local ystrata = math.sin(y/thick)
 
 									local t1 = 0.4
