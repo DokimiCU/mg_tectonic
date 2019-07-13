@@ -191,10 +191,10 @@ local ltol = 6
 local includer = 0.001
 local vlo_cov = 0.002
 local lo_cov = 0.045
-local mid_cov = 0.065
-local hi_cov = 0.125
-local vhi_cov = 0.245
-local excluder = 0.485
+local mid_cov = 0.09
+local hi_cov = 0.18
+local vhi_cov = 0.36
+local excluder = 0.50
 
 
 --density
@@ -203,7 +203,7 @@ local super_rare = 0.0001
 local rare = 0.001
 local scattered = 0.01
 local uncommon = 0.04
-local common = 0.08
+local common = 0.07
 local abundant = 0.16
 local plague = 0.32
 
@@ -214,25 +214,25 @@ local plague = 0.32
 --Normal (for soils).. forests and grasslands and cold
 local plantlist1 = {
 	--Green grass ..higher numbered grass is taller
-	{"default:grass_1", mid_cov, uncommon, 26, (spolar - htol), (tropic + htol), (average - ltol), (swamp + htol), (old - ltol), (open + htol)},
-	{"default:grass_2", mid_cov, uncommon, 27, (spolar - mtol), (tropic + htol), (average), (swamp + htol), (young - mtol), (open + htol)},
-	{"default:grass_3", mid_cov, uncommon, 28, (spolar - ltol), (tropic + htol), (average), (swamp + htol), (young - ltol), (open + mtol)},
-	{"default:grass_4", mid_cov, uncommon, 29, (spolar), (tropic + htol), (average + ltol), (swamp + htol), (young), (open)},
-	{"default:grass_5", mid_cov, common, 30, (spolar + ltol), (tropic + htol), (average + mtol), (swamp + htol), (young), (open - ltol)},
+	{"default:grass_1", lo_cov, uncommon, 26, (spolar - htol), (tropic + htol), (average - ltol), (swamp + htol), (old - ltol), (open + htol)},
+	{"default:grass_2", lo_cov, uncommon, 27, (spolar - mtol), (tropic + htol), (average), (swamp + htol), (young - mtol), (open + htol)},
+	{"default:grass_3", lo_cov, uncommon, 28, (spolar - ltol), (tropic + htol), (average), (swamp + htol), (young - ltol), (open + mtol)},
+	{"default:grass_4", lo_cov, common, 29, (spolar), (tropic + htol), (average + ltol), (swamp + htol), (young), (open)},
+	{"default:grass_5", lo_cov, abundant, 30, (spolar + ltol), (tropic + htol), (average + mtol), (swamp + htol), (young), (open - ltol)},
 	----
-	{"default:junglegrass", mid_cov, abundant, 31, (stropic - mtol), (tropic + mtol), (damp - mtol), (swamp + mtol), (young - mtol), (transition + ltol)},
+	{"default:junglegrass", lo_cov, abundant, 31, (stropic - mtol), (tropic + mtol), (damp - mtol), (swamp + mtol), (young - mtol), (transition + ltol)},
 	--ferns...higher numbered is taller
 	{"default:fern_1", lo_cov, scattered, 33, (spolar - mtol), (tropic + htol), (average - mtol), (swamp + htol), 0, (young + mtol)},
-	{"default:fern_2", lo_cov, scattered, 34, (spolar - ltol), (tropic + htol), (average - ltol), (swamp + htol), 0, (young + ltol)},
-	{"default:fern_3", lo_cov, common, 35, spolar, (tropic + htol), average, (swamp + htol), 0, young},
+	{"default:fern_2", lo_cov, common, 34, (spolar - mtol), (tropic + htol), (average - ltol), (swamp + htol), 0, (young + ltol)},
+	{"default:fern_3", lo_cov, abundant, 35, (spolar - ltol), (tropic + htol), average, (swamp + htol), 0, young},
 	--flowers
 	{"flowers:viola", vlo_cov, rare, 38, (temper - htol), (temper + htol), (average - htol), (average + ltol), open, (open + htol)},
 	{"flowers:tulip", vlo_cov, rare, 39, (spolar - htol), (temper + ltol), arid, average, transition, open},
 	{"flowers:geranium", vlo_cov, rare, 40, (spolar - mtol), (temper + mtol), (damp - htol), (damp + ltol), transition, open},
 	{"flowers:tulip_black", includer, super_rare, 41, (polar - mtol), (polar + htol), arid, damp, young, open},
 	{"flowers:rose", vlo_cov, rare, 42, (spolar - htol), (temper + htol), arid, damp, (open - ltol), (open + ltol)},
-	{"flowers:dandelion_yellow", mid_cov, uncommon, 43, (spolar - mtol), (temper + htol), (arid - mtol), (arid + mtol), (open - ltol), (open + htol)},
-	{"flowers:dandelion_white", mid_cov, uncommon, 44, 2, (temper + htol), (average - htol), (damp + htol), (open - ltol), (open + htol)},
+	{"flowers:dandelion_yellow", vlo_cov, uncommon, 43, (spolar - mtol), (temper + htol), (arid - mtol), (arid + mtol), (open - ltol), (open + htol)},
+	{"flowers:dandelion_white", vlo_cov, uncommon, 44, 2, (temper + htol), (average - htol), (damp + htol), (open - ltol), (open + htol)},
 	{"flowers:chrysanthemum_green", includer, super_rare, 45, temper, (stropic + htol), (damp - htol), damp, young, transition},
 	--crops
 	{"farming:wheat_8", super_rare, includer, 49, (temper - mtol), (temper + htol), (dry - ltol), (dry + htol), open, (open + ltol)},
@@ -282,11 +282,11 @@ end
 --Normal soils and desert sands,
 local plantlist2 = {
 	--Dry grass ..higher numbered grass is taller
-	{"default:dry_grass_1", mid_cov, uncommon, 21, (spolar - htol), (tropic + htol), (arid - mtol), (average + ltol), (old - ltol), (open + htol)},
-	{"default:dry_grass_2", mid_cov, uncommon, 22, (spolar - mtol), (tropic + htol), (arid - ltol), (average), (young - mtol), (open + htol)},
-	{"default:dry_grass_3", mid_cov, uncommon, 23, (spolar - ltol), (tropic + htol), (arid), (average - ltol), (young - ltol), (open + mtol)},
-	{"default:dry_grass_4", mid_cov, uncommon, 24, (spolar), (tropic + htol), (arid + ltol), (average - ltol), (young), (open)},
-	{"default:dry_grass_5", mid_cov, common, 25, (spolar + ltol), (tropic + htol), (arid + mtol), (average - ltol), (young), (open- ltol)},
+	{"default:dry_grass_1", lo_cov, uncommon, 21, (spolar - htol), (tropic + htol), (arid - mtol), (average + ltol), (old - ltol), (open + htol)},
+	{"default:dry_grass_2", lo_cov, uncommon, 22, (spolar - mtol), (tropic + htol), (arid - ltol), (average), (young - mtol), (open + htol)},
+	{"default:dry_grass_3", lo_cov, uncommon, 23, (spolar - ltol), (tropic + htol), (arid), (average - ltol), (young - ltol), (open + mtol)},
+	{"default:dry_grass_4", lo_cov, common, 24, (spolar), (tropic + htol), (arid + ltol), (average - ltol), (young), (open)},
+	{"default:dry_grass_5", lo_cov, abundant, 25, (spolar + ltol), (tropic + htol), (arid + mtol), (average - ltol), (young), (open- ltol)},
 
 }
 
@@ -328,9 +328,9 @@ end
 --Sea Shore Sand
 local plantlist3 = {
 	--Marram ..higher numbered grass is taller
-	{"default:marram_grass_1", mid_cov, uncommon, 51, (spolar - htol), (tropic + htol), arid, swamp, 2, barren},
-	{"default:marram_grass_2", mid_cov, uncommon, 52, (spolar - mtol), (tropic + mtol), (arid + ltol), (swamp - ltol), 1, barren},
-	{"default:marram_grass_3", mid_cov, uncommon, 53, (spolar - ltol), (tropic + ltol), (arid + mtol), (swamp - mtol), 0, barren},
+	{"default:marram_grass_1", lo_cov, uncommon, 51, (spolar - htol), (tropic + htol), arid, swamp, 2, barren},
+	{"default:marram_grass_2", lo_cov, common, 52, (spolar - mtol), (tropic + mtol), (arid + ltol), (swamp - ltol), 1, barren},
+	{"default:marram_grass_3", lo_cov, abundant, 53, (spolar - ltol), (tropic + ltol), (arid + mtol), (swamp - mtol), 0, barren},
 }
 
 for i in ipairs(plantlist3) do
@@ -393,11 +393,11 @@ mgtec.register_plant({
 --papyrus
 mgtec.register_plant({
 	nodes = {"default:papyrus", n= math.random(3,5) },
-	cover = vlo_cov,
-	density = abundant,
+	cover = lo_cov,
+	density = plague,
 	priority = 56,
 	check = function(t, pos)
-		return t.temp > temper and t.humidity > (damp - htol) and pos.y < 5 and pos.y > 1 and t.disturb > young and t.disturb < open and (t.nodu == c_clay or t.nodu ==  c_dirt or t.nodu ==  c_dirtlit or t.nodu ==  c_sand)
+		return t.temp > temper and t.humidity > average and pos.y < 5 and pos.y > 1 and t.disturb > young and t.disturb < (open + ltol) and (t.nodu == c_clay or t.nodu == c_dirtgr or t.nodu ==  c_dirt or t.nodu ==  c_dirtlit or t.nodu ==  c_sand)
 	end,
 })
 
@@ -408,7 +408,7 @@ mgtec.register_plant({
 	density = abundant,
 	priority = 57,
 	check = function(t, pos)
-		return t.temp > (stropic-ltol) and t.humidity > damp and t.disturb > young and t.disturb < open and t.nodu == c_river
+		return t.temp > (stropic-mtol) and t.humidity > average and t.disturb > young and t.disturb < open and t.nodu == c_river
 	end,
 })
 
@@ -429,13 +429,13 @@ mgtec.register_plant({
 --Tree type trees. Trees and Bushes ..Normal (for soils).. forests and grasslands and cold
 local bushlist1 = {
 	--giant aspen
-	{"default:aspen_tree", "default:aspen_leaves", vhi_cov, uncommon, 8, (spolar - mtol), (spolar + mtol), (damp - mtol), (swamp + htol), 0, (old + ltol), 16, 4},
+	{"default:aspen_tree", "default:aspen_leaves", vhi_cov, common, 8, (spolar - mtol), (spolar + mtol), (damp - mtol), (swamp + htol), 0, (old + ltol), 16, 4},
 	--adult jungletree
-	{"default:jungletree", "default:jungleleaves", vhi_cov, common, 10, (stropic - htol), (tropic + htol), (damp - htol), (swamp + htol), (old - ltol), transition,  13, 5},
+	{"default:jungletree", "default:jungleleaves", hi_cov, common, 10, (stropic - htol), (tropic + htol), (damp - htol), (swamp + htol), (old - ltol), transition,  13, 5},
 	--giant jungletree
-	{"default:jungletree", "default:jungleleaves", vhi_cov, uncommon, 11, (stropic - htol), (tropic + htol), (damp - htol), (swamp + htol), 0, (old + mtol), 19, 1},
+	{"default:jungletree", "default:jungleleaves", vhi_cov, common, 11, (stropic - htol), (tropic + htol), (damp - htol), (swamp + htol), 0, (old + mtol), 19, 1},
 	--juvenile acacia_tree---
-	{"default:acacia_tree", "default:acacia_leaves", hi_cov, scattered, 12, (stropic - htol), (tropic + mtol), (dry - htol), (dry + htol), (old + ltol), (young + ltol),  5, 2},
+	{"default:acacia_tree", "default:acacia_leaves", vhi_cov, scattered, 12, (stropic - htol), (tropic + mtol), (dry - htol), (dry + htol), (old + ltol), (young + ltol),  5, 2},
 	--adult acacia_tree
 	{"default:acacia_tree", "default:acacia_leaves", vhi_cov, scattered, 13, (stropic - htol), (tropic + mtol), (dry - htol), (dry + htol), old, young, 12, 3},
 	--giant acacia_tree
@@ -511,7 +511,7 @@ local bushlist2 = {
 	--juvenile pine---
 	{"default:pine_tree", "default:pine_needles", vhi_cov, scattered, 18, (spolar - htol), (temper + mtol), (dry - htol), (average + ltol), (young - ltol), (young + ltol), 6, 1},
 	--adult pine
-	{"default:pine_tree", "default:pine_needles", hi_cov, uncommon, 19, (spolar - htol), (temper + mtol), (dry - htol), (average + ltol), (old - ltol), young, 15, 1},
+	{"default:pine_tree", "default:pine_needles", vhi_cov, uncommon, 19, (spolar - htol), (temper + mtol), (dry - htol), (average + ltol), (old - ltol), young, 15, 1},
 	--giant pine
 	{"default:pine_tree", "default:pine_needles", vhi_cov, uncommon, 20, (spolar - htol), (temper + mtol), (dry - ltol), (average + ltol), 0, (old + ltol), 18, 1},
 
@@ -575,7 +575,7 @@ local bushlist3 = {
 	--juvenile apple---
 	{"default:tree", "default:leaves", hi_cov, uncommon, 15, (temper - htol), (stropic + ltol), (average - htol), (damp + mtol), (young + ltol), (transition + mtol), 6, 2, "default:apple"},
 	--adult apple
-	{"default:tree", "default:leaves", hi_cov, common, 16, (temper - htol), (temper + htol), (average - htol), (damp + mtol), (old + mtol), (young + mtol), 12, 5, "default:apple"},
+	{"default:tree", "default:leaves", vhi_cov, common, 16, (temper - htol), (temper + htol), (average - htol), (damp + mtol), (old + mtol), (young + mtol), 12, 5, "default:apple"},
 	--giant apple
 	{"default:tree", "default:leaves", vhi_cov, uncommon, 17, (temper - htol), (temper + mtol), (average - htol), (damp + mtol), 0, (old + ltol), 16, 3, "default:apple"},
 
