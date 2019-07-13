@@ -743,7 +743,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 
 				--density
-				local den_soft = (den_base*0.75) + 0.4 + ((n_terr ^ 2) * (1.3 + mup - xtgrad)) - dclif2
+				local den_soft = (den_base*0.41) + 1.3 + ((1-n_terr) * (2.2 - (xtgrad*2))) - dclif2
 				--threshold (redundant)
 				--local t_soft = 0.006*y -0.15
 
@@ -752,7 +752,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--eroded rock etc, deposited on lowlands
 
 				--density
-				local den_allu = (den_soft*0.745) + 0.2 - dclif2
+				local den_allu = (den_soft*0.8) + 0.25 - dclif2
 				--threshold (redundant)
 				--local t_allu = 0.0075*y -0.17
 
@@ -761,7 +761,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--Sediment
 				--subsurface soils and sands
 				--density
-				local den_sedi = (den_allu*0.74) + 0.2 - dclif2
+				local den_sedi = den_allu + 0.07 - dclif2
 				--threshold (redundant)
 				--local t_sedi = 0.0085*y -0.18
 
@@ -1135,7 +1135,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						--allows "clay caves". Height limit or it coats everything in clay
 						if not stab
 						and y > (-16 + (n_strata*8))
-						and y < (16 + (n_strata*8))
+						and y < (64 + (n_strata*16))
 						then
 							if den_sedi > t_base and nocave then
 								data[vi] = SEDID.c_clay
@@ -1279,7 +1279,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					--ocean
 					if y <= SEA-1 and (basin == true or river_basin == true) then
 						--floating ice
-						if (nodu == MISCID.c_water or nodu ~= MISCID.c_river or nodu == c_ice) and temp < 30 and distu > 5 and distu <40 and y == SEA-1 then
+						if (nodu == MISCID.c_water or nodu == MISCID.c_river or nodu == c_ice) and temp < 30 and distu > 5 and distu <40 and y == SEA-1 then
 							data[vi] = c_ice
 							void = false
 							--seafloor
