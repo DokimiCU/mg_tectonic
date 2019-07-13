@@ -218,13 +218,13 @@ local plantlist1 = {
 	{"default:grass_2", mid_cov, uncommon, 27, (spolar - mtol), (tropic + htol), (average), (swamp + htol), (young - mtol), (open + htol)},
 	{"default:grass_3", mid_cov, uncommon, 28, (spolar - ltol), (tropic + htol), (average), (swamp + htol), (young - ltol), (open + mtol)},
 	{"default:grass_4", mid_cov, uncommon, 29, (spolar), (tropic + htol), (average + ltol), (swamp + htol), (young), (open)},
-	{"default:grass_5", mid_cov, uncommon, 30, (spolar + ltol), (tropic + htol), (average + mtol), (swamp + htol), (young), (open - ltol)},
+	{"default:grass_5", mid_cov, common, 30, (spolar + ltol), (tropic + htol), (average + mtol), (swamp + htol), (young), (open - ltol)},
 	----
-	{"default:junglegrass", mid_cov, uncommon, 31, (stropic - mtol), (tropic + mtol), (damp - mtol), (swamp + mtol), (young - mtol), (transition + ltol)},
+	{"default:junglegrass", mid_cov, abundant, 31, (stropic - mtol), (tropic + mtol), (damp - mtol), (swamp + mtol), (young - mtol), (transition + ltol)},
 	--ferns...higher numbered is taller
 	{"default:fern_1", lo_cov, scattered, 33, (spolar - mtol), (tropic + htol), (average - mtol), (swamp + htol), 0, (young + mtol)},
 	{"default:fern_2", lo_cov, scattered, 34, (spolar - ltol), (tropic + htol), (average - ltol), (swamp + htol), 0, (young + ltol)},
-	{"default:fern_3", lo_cov, scattered, 35, spolar, (tropic + htol), average, (swamp + htol), 0, young},
+	{"default:fern_3", lo_cov, common, 35, spolar, (tropic + htol), average, (swamp + htol), 0, young},
 	--flowers
 	{"flowers:viola", vlo_cov, rare, 38, (temper - htol), (temper + htol), (average - htol), (average + ltol), open, (open + htol)},
 	{"flowers:tulip", vlo_cov, rare, 39, (spolar - htol), (temper + ltol), arid, average, transition, open},
@@ -286,7 +286,7 @@ local plantlist2 = {
 	{"default:dry_grass_2", mid_cov, uncommon, 22, (spolar - mtol), (tropic + htol), (arid - ltol), (average), (young - mtol), (open + htol)},
 	{"default:dry_grass_3", mid_cov, uncommon, 23, (spolar - ltol), (tropic + htol), (arid), (average - ltol), (young - ltol), (open + mtol)},
 	{"default:dry_grass_4", mid_cov, uncommon, 24, (spolar), (tropic + htol), (arid + ltol), (average - ltol), (young), (open)},
-	{"default:dry_grass_5", mid_cov, uncommon, 25, (spolar + ltol), (tropic + htol), (arid + mtol), (average - ltol), (young), (open- ltol)},
+	{"default:dry_grass_5", mid_cov, common, 25, (spolar + ltol), (tropic + htol), (arid + mtol), (average - ltol), (young), (open- ltol)},
 
 }
 
@@ -319,8 +319,7 @@ for i in ipairs(plantlist2) do
 				or t.nodu == c_dirtconlit
 			  or t.nodu == c_dirtgr
 				or t.nodu == c_dirtdgr
-				or t.nodu == c_dsand
-				or t.nodu == c_sand2)
+				or t.nodu == c_dsand)
 		end,
 	})
 end
