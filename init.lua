@@ -78,7 +78,7 @@ local ORET = 0.97
 
 --Checks if this is a place for ore deposits.
 
-local function ore(ab_stra, y, ORET, ybig, n_strata, data, vi, OREID)
+local function ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, data, vi, OREID)
 	--c_coal, c_iron, c_copp, c_tin, c_gold, c_diam, c_mese
 
 	--strata thickness
@@ -112,6 +112,10 @@ local function ore(ab_stra, y, ORET, ybig, n_strata, data, vi, OREID)
 
 	--threshold adjusted with depth
 	local ore_t = ORET + ybig
+	--harder if actually in the cave.
+	if not nocave then
+		ore_t = ore_t + 0.2
+	end
 
 	--height limits
 	local blend = n_strata * 50
@@ -121,7 +125,10 @@ local function ore(ab_stra, y, ORET, ybig, n_strata, data, vi, OREID)
 	local orehmax_m = -200 + blend   --mese is deep
 
 	--above their threshold
-	if ab_stra >= ore_t then
+	--add some of the cave noise to increase chance of finding ores near caves
+	--working with caves: should be less inside the actual cave (less floaters), but..
+	--..reduced threshold should boost approaching cave
+	if ab_stra >= ore_t - (ab_cave + ab_cave2 * 0.1)  then
 
 		--split them by height and strata
 		--coal.
@@ -709,10 +716,10 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--wave + raise + large hills 2 + sharp hills (moderated by large or gives sky needles) + cliffs 2
 
 				--waves
-				local dwav = ((xwav2 ^ 3)*1.67) + ((xwav ^ 3)*6.89) + (mup*9.54)
+				local dwav = ((xwav2 ^ 3)*1.67) + ((xwav ^ 3)*6.89) + (mup*12.16)
 				--noise
 				local dnoi = ((n_terr ^3) + ((n_terr)*0.5) + ((n_terr2*n_terr)*0.8)) * 5.7 * whs
-				--cliffs
+				--cliffs..
 				local dclif1 = ((ab_stra^2)*0.5)
 				local dclif2 = ((ab_cave*ab_cave2)*0.08)
 
@@ -721,7 +728,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 				---Base Threshold (use for all of them now)
 				--effects heights of landscape
-				local t_base = 0.00905*y
+				local t_base = 0.01036*y
 
 
 
@@ -958,7 +965,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 						--check... can we fill in the non-cave?
 						--extra noises break up sheet
-						if ab_cave >= cav_t1
+						if (1-ab_cave) >= cav_t1
 						or (ab_cave2 ^ 3) >= cav_t1
 						then
 							nocave = true
@@ -984,13 +991,13 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						if den_base > t_base then
 
 							--first do ore, with no regard for caves(we want it inside caves)
-							if ore(ab_stra, y, ORET, ybig, n_strata, data, vi, OREID)
+							if ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, data, vi, OREID)
 							then
 								void = false
 							--if it wasn't ore and isn't cave now do rock
 							elseif nocave then
 								--strata splits..
-								local thick = 9 + (5*ab_stra)
+								local thick = 11 + (3*n_strata)
 								local ystrata = math.sin(y/thick)
 
 								--an occassional layer of obsidian around caves
@@ -1052,16 +1059,19 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 								if nocave then
 									--strata splits..
-									local thick = 5 + (4*ab_stra)
+									local thick = 7 + (2*n_strata)
 									local ystrata = math.sin(y/thick)
 
 									--a little lost base rock...
-									--with coal
+									--with coal and iron
 									if ystrata >= 0.7
 									and ystrata <= 0.9
 									and n_strata > 0.8 then
-										if math.random(1,500) == 1 then
+										if math.random(1,10) == 1 then
 											data[vi] = OREID.c_coal
+											void = false
+										elseif math.random(1,100) == 1 then
+											data[vi] = OREID.c_iron
 											void = false
 										else
 											data[vi] = c_stone
@@ -1122,8 +1132,11 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						-- the following need to be stable
 						--but some solid things are stable..e.g. clay,.
 						--... so covers caves, rather than have giant holes
-						--allows "clay caves"
-						if not stab then
+						--allows "clay caves". Height limit or it coats everything in clay
+						if not stab
+						and y > (-16 + (n_strata*8))
+						and y < (16 + (n_strata*8))
+						then
 							if den_sedi > t_base and nocave then
 								data[vi] = SEDID.c_clay
 								void = false
@@ -1135,7 +1148,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								if den_allu > t_base and nocave then
 
 									--strata splits..
-									local thick = 10 + (50*ab_stra)
+									local thick = 30 + (30*n_strata)
 									local ystrata = math.sin(y/thick)
 
 									local t1 = 0.4
