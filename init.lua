@@ -252,7 +252,8 @@ function climate(x, z, y, n_terr, n_terr2)
 
 	--disturbance regime
 	--i.e. ecological succession
-	local distu =   ((((n_terr^2) + (n_terr2^2))/2)*100) + blend
+	local distu =  math.abs(n_terr * 100 + blend)
+
 
 	--altitude effects..
 	--coast is wet, but disturbed
@@ -1977,3 +1978,35 @@ end)
 
 
 minetest.register_on_joinplayer(init_cloud)
+
+---------------------------------------
+--Bug testing Climate tool
+--this has a margin of error due to random blend?
+--[[
+local enviro_meter = function(user, pointed_thing)
+
+  local name =user:get_player_name()
+  local pos = user:getpos()
+
+	minetest.chat_send_player(name, minetest.colorize("#00ff00", "ENVIRONMENT MEASUREMENT:"))
+
+  local t,h,d = climate(pos.x, pos.z, pos.y)
+
+  minetest.chat_send_player(name, minetest.colorize("#cc6600","TEMPERATURE INDEX LEVEL = "..t))
+	minetest.chat_send_player(name, minetest.colorize("#cc6600","HUMIDITY INDEX LEVEL = "..h))
+	minetest.chat_send_player(name, minetest.colorize("#cc6600","DISTURBANCE INDEX LEVEL = "..d))
+
+
+end
+
+
+minetest.register_craftitem("mg_tectonic:enviro_meter", {
+	description = "Enviro Meter",
+	inventory_image = "default_paper.png",
+	stack_max = 1,
+
+	on_use = function(itemstack, user, pointed_thing)
+		enviro_meter(user, pointed_thing)
+	end,
+})
+]]
