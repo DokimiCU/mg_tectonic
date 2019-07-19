@@ -2007,12 +2007,26 @@ local init_cloud = function(player)
 	player:set_clouds({color="#FFFFFFFC", density=0.40, height=1500, thickness=25, speed ={x=1, z=0}})
 end
 
+--use beds rather than original spawn point
+local enable_bed_respawn = minetest.settings:get_bool("enable_bed_respawn")
+if enable_bed_respawn == nil then
+	enable_bed_respawn = true
+end
+
+
 --this is needed to stop it putting player at 0,0,0...but overrides bed save :-(
 minetest.register_on_respawnplayer(function(player)
-			init_cloud(player)
-			savedspawn(player)
-			--disable default
-			return true
+	init_cloud(player)
+	-- Avoid respawn conflict with beds mod
+	if beds
+	and enable_bed_respawn
+	and	beds.spawn[player:get_player_name()] then
+		return
+	end
+
+	savedspawn(player)
+	--disable default
+	return true
 end)
 
 
@@ -2020,7 +2034,8 @@ minetest.register_on_joinplayer(init_cloud)
 
 ---------------------------------------
 --Bug testing Climate tool
---this has a margin of error due to random blend?
+--need to give n_terr etc or gives inaccurate reading,
+-- and blend gives a random margin of error
 --[[
 local enviro_meter = function(user, pointed_thing)
 
