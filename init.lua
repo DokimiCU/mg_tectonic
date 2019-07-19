@@ -73,6 +73,10 @@ local BCAVT = 0.999
 --Ore threshold
 local ORET = 0.987
 
+
+
+
+
 --==================================================================
 --FUNCTIONS
 
@@ -185,13 +189,11 @@ end
 
 ------------------------------
 --Climate Calculations.
-function climate(x, z, y, n_terr, n_terr2)
-	if n_terr == nil then -- So it can be used outside of the loop
-		n_terr = nobj_terr_i:get2d({x=x,y=z})
-	end
-	if n_terr2 == nil then
-		n_terr2 = nobj_terr2_i:get2d({x = x, y = z})
-	end
+--this function can be called by other mods instead of default biome climate checks
+
+mgtec.climate = function(x, z, y, n_terr, n_terr2)
+
+
 	--east = + x, west = - x, south = -z, n = + z
 	--Climate is decided by:
 	-- -Ranges: rains come from the west (-x), rise over the ranges dumping cooling rain, descending hot and dry (east +x)
@@ -200,6 +202,17 @@ function climate(x, z, y, n_terr, n_terr2)
 
 	--blending
 	local blend = math.random(-5, 5)
+
+	--to help climate be accessed by other mods (mainly weather)
+	--we will ignore noise (thorn0906's solution crashes when actually used,
+	-- accessing noise repeatedly likely very heavy for little gain
+	-- reducing noiseyness better? Randomness can make things throw a fit)
+	if n_terr == nil or n_terr2 == nil then
+		blend = 0
+		n_terr = 0
+		n_terr2 = 0
+	end
+
 
 	--We are Southern Hemisphererers here!
 	--decreasing temp from max z to min z (latitude) (from 100 to 0 i.e north desert to south ice)
@@ -357,6 +370,9 @@ end
 
 --End of functions
 
+
+
+
 --=============================================================================
 --IDs
 -- Get the content IDs for the nodes used.
@@ -422,6 +438,9 @@ local OREID = {
 		c_iron = minetest.get_content_id("default:stone_with_iron"),
 		c_coal = minetest.get_content_id("default:stone_with_coal")
 }
+
+
+
 
 --=============================================================================
 --NOISES
@@ -493,6 +512,8 @@ local np_strata = {
 }
 
 
+
+
 ---============================================================================
 --NOISE MEMORY
 
@@ -504,8 +525,8 @@ local nobj_cave = nil
 local nobj_cave2 = nil
 local nobj_strata = nil
 -- For getting individual n_terr values
-nobj_terr_i = nil
-nobj_terr2_i = nil
+--nobj_terr_i = nil
+--nobj_terr2_i = nil
 
 -- Localise noise buffer table outside the loop, to be re-used for all
 -- mapchunks, therefore minimising memory use.
@@ -604,8 +625,8 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 	nobj_cave = nobj_cave or minetest.get_perlin_map(np_cave, chulen)
 	nobj_cave2 = nobj_cave2 or minetest.get_perlin_map(np_cave2, chulen)
 	nobj_strata = nobj_strata or minetest.get_perlin_map(np_strata, chulen)
-	nobj_terr_i = nobj_terr_i or minetest.get_perlin(np_terrain.seed, np_terrain.octaves, np_terrain.persist, np_terrain.scale)
-	nobj_terr2_i = nobj_terr_i or minetest.get_perlin(np_terrain2.seed, np_terrain2.octaves, np_terrain2.persist, np_terrain2.scale)
+	--nobj_terr_i = nobj_terr_i or minetest.get_perlin(np_terrain.seed, np_terrain.octaves, np_terrain.persist, np_terrain.scale)
+	--nobj_terr2_i = nobj_terr_i or minetest.get_perlin(np_terrain2.seed, np_terrain2.octaves, np_terrain2.persist, np_terrain2.scale)
 
 	-- Create a flat array of noise values from the perlin map, with the
 	-- minimum point being 'minp'.
@@ -1213,7 +1234,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 										local temp
 										local hum
 										local distu
-										temp, hum, distu = climate(x, z, y, n_terr, n_terr2)
+										temp, hum, distu = mgtec.climate(x, z, y, n_terr, n_terr2)
 
 										--We have some fiddly coastal stuff.
 										--on a node, that is sea surface or one above
@@ -1293,7 +1314,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					local temp
 					local hum
 					local distu
-					temp, hum, distu = climate(x, z, y, n_terr, n_terr2)
+					temp, hum, distu = mgtec.climate(x, z, y, n_terr, n_terr2)
 
 					--ocean
 					if y <= SEA-1 and (basin == true or river_basin == true) then
@@ -1829,7 +1850,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						 local temp
 						 local hum
 						 local distu
-						 temp, hum, distu = climate(x, z, y, n_terr, n_terr2)
+						 temp, hum, distu = mgtec.climate(x, z, y, n_terr, n_terr2)
 
 						 -- pack it in a table, for plants API
 						 local conditions = {
@@ -2008,7 +2029,7 @@ local enviro_meter = function(user, pointed_thing)
 
 	minetest.chat_send_player(name, minetest.colorize("#00ff00", "ENVIRONMENT MEASUREMENT:"))
 
-  local t,h,d = climate(pos.x, pos.z, pos.y)
+  local t,h,d = mgtec.climate(pos.x, pos.z, pos.y)
 
   minetest.chat_send_player(name, minetest.colorize("#cc6600","TEMPERATURE INDEX LEVEL = "..t))
 	minetest.chat_send_player(name, minetest.colorize("#cc6600","HUMIDITY INDEX LEVEL = "..h))
