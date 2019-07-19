@@ -75,4 +75,6 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 
 - Make climate function more accessible to allow its use by weather mods etc
 
+- Fix conflict with beds respawn
+
 (Bugs/issues: kelp not displaying correctly (currently disabled), plants not spawning on permafrost(?), some forests without trees (?), ugly border between east/west when lowlands)
