@@ -71,7 +71,7 @@ local BCAVTF = 0.006
 local BCAVT = 0.999
 
 --Ore threshold
-local ORET = 0.97
+local ORET = 0.987
 
 --==================================================================
 --FUNCTIONS
@@ -82,7 +82,7 @@ local function ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, 
 	--c_coal, c_iron, c_copp, c_tin, c_gold, c_diam, c_mese
 
 	--strata thickness
-	local thick = 50 + (50 * ab_stra)
+	local thick = 100 + (50 * ab_stra)
 
 	--strata splits for ore types..
 	local t1 = 0.25
@@ -120,9 +120,9 @@ local function ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, 
 	--height limits
 	local blend = n_strata * 50
 	local orehmin_c = -10000 + (n_strata * 500) --min height for coal (a shallow ore)
-	local orehmax_g = -100 + blend   --dig a little for gold
-	local orehmax_d = -150 + blend   --diamonds are deep
-	local orehmax_m = -200 + blend   --mese is deep
+	local orehmax_g = -200 + blend   --dig a little for gold
+	local orehmax_d = -300 + blend   --diamonds are deep
+	local orehmax_m = -400 + blend   --mese is deep
 
 	--above their threshold
 	--add some of the cave noise to increase chance of finding ores near caves
@@ -224,9 +224,9 @@ function climate(x, z, y, n_terr, n_terr2)
 	--decreasing temp with hieght...and combine previous two as baseline
 	local temp = temp_z + temp_x - blend
 	--only apply height adjustment above sea level, otherwise cooking oceans
-	--i.e. -0.06 = -60 at 1000m
+	--i.e. -0.05 = -50 at 1000m
 	if y >= -2 then
-		temp = (-0.06*y) + temp_z + temp_x - blend
+		temp = (-0.05*y) + temp_z + temp_x - blend
 	end
 
 	---------------
@@ -260,24 +260,28 @@ function climate(x, z, y, n_terr, n_terr2)
 	-- hill tops catch rain but are more disturbed
 	if y > 490 or (y < 10 and y > -3) then
 		--alpine (force snowy)
-		if y > 1100 + math.random(-30, 5) then
+		if y > 1200 + math.random(-30, 5) then
 			hum = hum + 48
-			temp = temp - 30
+			temp = temp - 32
 			distu = distu + 12
 			--subalpine
-		elseif y > 1000 + blend then
+		elseif y > 1100 + blend then
 			hum = hum + 24
-			temp = temp - 15
+			temp = temp - 16
 			distu = distu + 6
-		elseif y > 900 + blend then
+		elseif y > 1000 + blend then
 			hum = hum + 12
-			temp = temp - 5
+			temp = temp - 8
 			distu = distu + 3
 			--montane
-		elseif y > 750 + blend then
+		elseif y > 900 + blend then
+			temp = temp - 4
 			hum = hum + 6
-		elseif y > 500 + blend then
+		elseif y > 700 + blend then
+			temp = temp - 2
 			hum = hum + 3
+		elseif y > 500 + blend then
+			hum = hum + 2
 			--coast
 		elseif (y <= 3 and y >= -1) then
 			-- generally wetter, but sometimes drier
@@ -882,8 +886,22 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								--local interr = 1-n_terr
 								local interr2 = 1-n_terr2
 
-								local channel = (30 + (interr2*20))*math.cos(x/60) + (5 +(interr2*4))*math.cos(x/8)
-								local w = ((11 + (0.0003*xab)) - ((n_terr2^2)*6)) * (1 + (y/(9 + n_terr2)))
+								--rivers have real world mathmatical geometry
+								--width (actually half the width)
+								local wp = (8 + (0.0003*xab))
+								local w = wp * (1 + (y/(8 + (n_terr*2)))) - ((n_terr2^3)*3)
+
+								--period of channel
+								local per_ch = ((3.5 * n_terr) + 22) * wp
+								--local per_ch = 176
+								--amplitude
+								local am_ch = (interr2 + 4.6) * wp
+								--local am_ch = 37
+
+								--wave for channel
+								local c1 = ((am_ch)*math.sin(x/per_ch))
+								local c2 = (12 + (interr2*3))*math.sin(x/(56 + (n_terr*8)))
+								local channel = c1 + c2
 
 								--line it up north-south
 								if z <= lakes[n].z + channel + w
