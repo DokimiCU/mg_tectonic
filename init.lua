@@ -66,7 +66,7 @@ local CONOI = 2000
 
 --Cave size.
 --Base cave threshold for fissures
-local BCAVTF = 0.006
+local BCAVTF = 0.007
 --Base cave threshold for caves
 local BCAVT = 0.999
 
@@ -132,7 +132,7 @@ local function ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, 
 	--add some of the cave noise to increase chance of finding ores near caves
 	--working with caves: should be less inside the actual cave (less floaters), but..
 	--..reduced threshold should boost approaching cave
-	if ab_stra >= ore_t - (ab_cave + ab_cave2 * 0.1)  then
+	if ab_stra >= ore_t - ((ab_cave + ab_cave2) * 0.01)  then
 
 		--split them by height and strata
 		--coal.
@@ -910,7 +910,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								--rivers have real world mathmatical geometry
 								--width (actually half the width)
 								local wp = (8 + (0.0003*xab))
-								local w = wp * (1 + (y/(8 + (n_terr*2)))) - ((n_terr2^3)*3)
+								local w = (wp * (1 + (y/(8 + (n_terr*2))))) - ((n_terr2^3)*3)
 
 								--period of channel
 								local per_ch = ((3.5 * n_terr) + 22) * wp
