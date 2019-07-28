@@ -66,12 +66,13 @@ local CONOI = 2000
 
 --Cave size.
 --Base cave threshold for fissures
-local BCAVTF = 0.007
+local BCAVTF = 0.0075
+
 --Base cave threshold for caves
-local BCAVT = 0.999
+local BCAVT = 0.996
 
 --Ore threshold
-local ORET = 0.987
+local ORET = 0.97
 
 
 
@@ -114,8 +115,12 @@ local function ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, 
 	--]]
 
 
-	--threshold adjusted with depth
+	--threshold adjusted with depth to get bigger down deep.
+	-- but not smaller with height or none in mountains
 	local ore_t = ORET + ybig
+	if y > 0 then
+		ore_t = ORET
+	end
 	--harder if actually in the cave.
 	if not nocave then
 		ore_t = ore_t + 0.2
@@ -132,7 +137,7 @@ local function ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, 
 	--add some of the cave noise to increase chance of finding ores near caves
 	--working with caves: should be less inside the actual cave (less floaters), but..
 	--..reduced threshold should boost approaching cave
-	if ab_stra >= ore_t - ((ab_cave + ab_cave2) * 0.01)  then
+	if ab_stra >= ore_t - (ab_cave2 * 0.025)  then
 
 		--split them by height and strata
 		--coal.
@@ -480,7 +485,7 @@ local np_cave = {
    spread = {x = 162, y = 162, z = 324},
    seed = -9103323,
    octaves = 4,
-   persist = 0.2,
+   persist = 0.3,
    lacunarity = 3,
 	 flags = 'noeased',
 }
@@ -747,7 +752,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				local dnoi = ((n_terr ^3) + ((n_terr)*0.5) + ((n_terr2*n_terr)*0.8)) * 5.7 * whs
 				--cliffs..
 				local dclif1 = ((ab_stra^2)*0.5)
-				local dclif2 = ((ab_cave*ab_cave2)*0.08)
+				local dclif2 = ((ab_cave*ab_cave2)*0.06)
 
 				local den_base = dwav + dnoi - dclif1 - dclif2
 
@@ -992,7 +997,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						--for adding/subtracting from thresholds
 						--this is to change cave size with depth
 						-- goes from 1 at map top to 0 at y=0, to -1 at map bottom (modified by strength)
-						local ybig = ((y/YMAX)*0.2)
+						local ybig = ((y/YMAX)*0.22)
 
 						--------------
 						--Fissures?
@@ -1005,21 +1010,20 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 						--check... can we fill in the non-cave?
 						--extra noises break up sheet
-						if (1-ab_cave) >= cav_t1
-						or (ab_cave2 ^ 3) >= cav_t1
+						if (ab_cave) >= cav_t1
+						or (n_cave2) >= cav_t1
 						then
 							nocave = true
 						end
 
 						-----------------
 						--Round caves?
-						--These use the same noise as fissures, so they become side chambers.
 						-- reverse deal from fissures.
 						--If the noise is above the threshold we empty out a cave
 						-- lower threshold = bigger cave..
 						local cav_t2 = BCAVT + ybig
 
-						if ab_cave2 ^ 2 >= cav_t2
+						if n_cave2 ^ 2 >= cav_t2
 						then
 							nocave = false
 						end
@@ -1097,7 +1101,12 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 									nocave = false
 								end
 
-								if nocave then
+								--first do ore, with no regard for caves(we want it inside caves)
+								if ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, data, vi, OREID)
+								then
+									void = false
+								--if it wasn't ore and isn't cave now do rock
+								elseif nocave then
 									--strata splits..
 									local thick = 7 + (2*n_strata)
 									local ystrata = math.sin(y/thick)
