@@ -420,7 +420,7 @@ mgtec.register_plant({
 	density = rare,
 	priority = 58,
 	check = function(t, pos)
-		return t.temp > 1 and t.humidity > dry and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone or t.nodu == c_clay)
+		return t.temp > 1 and t.humidity > arid and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone or t.nodu == c_clay)
 	end,
 })
 
