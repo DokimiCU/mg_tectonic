@@ -66,13 +66,13 @@ local CONOI = 2500
 
 --Cave size.
 --Base cave threshold for fissures
-local BCAVTF = 0.0075
+local BCAVTF = 0.0078
 
 --Base cave threshold for caves
 local BCAVT = 0.996
 
 --Ore threshold
-local ORET = 0.975
+local ORET = 0.97
 
 
 
@@ -137,7 +137,7 @@ local function ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, 
 	--add some of the cave noise to increase chance of finding ores near caves
 	--working with caves: should be less inside the actual cave (less floaters), but..
 	--..reduced threshold should boost approaching cave
-	if ab_stra >= ore_t - (ab_cave2 * 0.02)  then
+	if ab_stra >= ore_t - (ab_cave2 * 0.03)  then
 
 		--split them by height and strata
 		--coal.
@@ -245,7 +245,7 @@ mgtec.climate = function(x, z, y, n_terr, n_terr2)
 	--only apply height adjustment above sea level, otherwise cooking oceans
 	--large parts of "lowlands" are very high too, so start cooling high.
 	--i.e. -0.05 = -50 at 1000m
-	if y >= 150 + (n_terr *50) then
+	if y >= 200 + (n_terr *75) then
 		temp = (-0.05*y) + temp_z + temp_x - blend
 	end
 
@@ -844,7 +844,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					local shelfsl = (3 - (n_terr^3))*y --sets slope for x
 					--local bed = SEABED + ((n_terr^3)*SEABED)
 					--Are we in the right place for oceans?
-					if (xab > ((SHELFX + shelfnoi) - shelfsl)
+					if (xab > ((SHELFX + (shelfnoi*2)) - shelfsl)
 					or zab > ((SHELFZ + shelfnoi) - shelfsl))
 					and y >= SEABED  then --max depth,
 						basin = true
@@ -914,7 +914,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					if not basin and not river_basin then
 						for n = 0, num_lakes do
 							local laked = -25 + (10 * n_terr2)
-		    			local laker = (160 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(200 + (10 * n_terr))))
+		    			local laker = (160 + (100 * n_terr) + (25 * n_terr2)) * (1 + (y/(160 + (20 * n_terr))))
 		    			if x < lakes[n].x + (laker*1.6) and x > lakes[n].x - (laker*1.6)
 							and z < lakes[n].z + laker and z > lakes[n].z - laker
 							and y > laked then
@@ -948,10 +948,10 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								and z >= lakes[n].z + channel - w then
 									--make sure the river is on the same side East-west of the map as the lake!
 									--east lakes, only place the river further east
-									if lakes[n].x > 0 and x > lakes[n].x then
+									if lakes[n].x > 0 and x - w > lakes[n].x then
 										river_basin = true
 										--west lakes, only place river further west
-									elseif lakes[n].x < 0 and x < lakes[n].x then
+									elseif lakes[n].x < 0 and x + w < lakes[n].x then
 										river_basin = true
 									end
 								end
@@ -1198,9 +1198,9 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						--allows "clay caves". Height limit or it coats everything in clay
 						--only in areas where sediment is higher than base rock (so not coating all caves)
 						if not stab
-						and den_base < den_sedi
+						and den_soft < den_sedi
 						and y > (-32 + (n_strata*8))
-						and y < (128 + (n_strata*16))
+						--and y < (128 + (n_strata*16))
 						then
 							if den_sedi > t_base and nocave then
 								data[vi] = SEDID.c_clay
