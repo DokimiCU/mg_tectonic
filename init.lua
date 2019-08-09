@@ -423,6 +423,7 @@ local c_dirtsno = minetest.get_content_id("default:dirt_with_snow")
 local c_dirtlit = minetest.get_content_id("default:dirt_with_rainforest_litter")
 local c_dirtconlit = minetest.get_content_id("default:dirt_with_coniferous_litter")
 local c_snowbl = minetest.get_content_id("default:snowblock")
+local c_snow = minetest.get_content_id("default:snow")
 local c_ice = minetest.get_content_id("default:ice")
 local c_dsand = minetest.get_content_id("default:desert_sand")
 local c_permamoss = minetest.get_content_id("default:permafrost_with_moss")
@@ -1196,7 +1197,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						--only in areas where sediment is higher than base rock (so not coating all caves)
 						if not stab
 						and den_soft < den_sedi
-						and y > (-32 + (n_strata*8))
+						and y > (-320 + (n_strata*8))
 						--and y < (128 + (n_strata*16))
 						then
 							if den_sedi > t_base and nocave then
@@ -1341,9 +1342,37 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					--ocean
 					if y <= SEA-1 and (basin == true or river_basin == true) then
 						--floating ice
-						if (nodu == MISCID.c_water or nodu == MISCID.c_river or nodu == c_ice) and temp < 30 and distu > 5 and distu <40 and y == SEA-1 then
+						--
+						if temp < 30 and distu > 6 and distu <40 and y == SEA-1 then
 							data[vi] = c_ice
 							void = false
+							--thicker ice in low disturbance
+							if distu < 30 then
+								if nodu == MISCID.c_water or nodu == MISCID.c_river then
+									--This is nodu: nodu  = data[(vi - ystridevm)]
+									--overwrite water
+									data[(vi - ystridevm)] = c_ice
+									--thicker?
+									if distu < 20 then
+										if data[(vi - 2*ystridevm)] == MISCID.c_water then
+											data[(vi - 2*ystridevm)] = c_ice
+											--higher on top
+											--can't do ice or it becomes an island!
+											if data[(vi + ystridevm)] == MISCID.c_air then
+												data[(vi + ystridevm)] = c_snow
+											end
+											--even thicker
+											if distu < 10 then
+												if data[(vi - 3*ystridevm)] == MISCID.c_water then
+													data[(vi - 3*ystridevm)] = c_ice
+												end
+												--higher on top
+												data[(vi + ystridevm)] = c_snowbl
+											end
+										end
+									end
+								end
+							end
 							--seafloor
 						elseif nodu ~= MISCID.c_water
 						and nodu ~= MISCID.c_river
@@ -1356,14 +1385,14 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						then
 							--corals: low disturbance, warm, shallow
 							if not river_basin
-							and distu > 3
-							and distu < 15
-							and temp > 70
-							and y <= SEA-2
-							and y > SEA - 10
+							and distu > 12
+							and distu < 30
+							and temp > 60
+							and y <= SEA-3
+							and y > SEA - 17
 							then
 								-- allow stacking coral
-								local c = math.random(1,21)
+								local c = math.random(1,31)
 								if c <= 1 then
 									data[vi] = MISCID.c_water
 									void = false
@@ -1390,23 +1419,23 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							--[[Spawning, but not displaying correctly!
 							--kelp: higher disturbance, colder, deeper
 							elseif not river_basin
-							and distu > 15
-							and distu < 40
+							and distu > 35
+							and distu < 60
 							and temp < 75
 							and y <= SEA-5
 							and y > SEA - 22
 							then
 								data[vi] = MISCID.c_kelpsand
-								void = false
-]]
+								void = false]]
+
 							--low disturbance do fine sediment
 							elseif distu < 5 and nodu ~= SEDID.c_clay and nodu ~= SEDID.c_sand2 and nodu ~= c_coral and nodu ~= c_ice then
 								data[vi] = SEDID.c_clay
 								void = false
 							-- volcanic if rough
-							elseif distu > 95 and nodu ~= c_ice then
+							elseif distu > 96 and nodu ~= c_ice then
 								local c = math.random(1,10)
-								if c > 4 then
+								if c > 6 then
 									data[vi] = c_obsid
 									void = false
 								else
