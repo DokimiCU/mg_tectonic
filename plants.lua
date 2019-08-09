@@ -192,9 +192,9 @@ local includer = 0.001
 local vlo_cov = 0.002
 local lo_cov = 0.045
 local mid_cov = 0.09
-local hi_cov = 0.18
-local vhi_cov = 0.36
-local excluder = 0.50
+local hi_cov = 0.19
+local vhi_cov = 0.38
+local excluder = 0.60
 
 
 --density
@@ -428,19 +428,12 @@ mgtec.register_plant({
 
 --Tree type trees. Trees and Bushes ..Normal (for soils).. forests and grasslands and cold
 local bushlist1 = {
-	--giant aspen
-	{"default:aspen_tree", "default:aspen_leaves", vhi_cov, common, 8, (spolar - mtol), (spolar + mtol), (damp - mtol), (swamp + htol), -1, (old + ltol), 16, 4},
 	--adult jungletree
 	{"default:jungletree", "default:jungleleaves", hi_cov, common, 10, (stropic - htol), (tropic + htol), (damp - htol), (swamp + htol), (old - ltol), transition,  13, 5},
-	--giant jungletree
-	{"default:jungletree", "default:jungleleaves", vhi_cov, common, 11, (stropic - htol), (tropic + htol), (damp - htol), (swamp + htol), -1, (old + mtol), 19, 1},
 	--juvenile acacia_tree---
 	{"default:acacia_tree", "default:acacia_leaves", vhi_cov, scattered, 12, (stropic - htol), (tropic + mtol), (dry - htol), (dry + htol), (old + ltol), (young + ltol),  5, 2},
 	--adult acacia_tree
 	{"default:acacia_tree", "default:acacia_leaves", vhi_cov, scattered, 13, (stropic - htol), (tropic + mtol), (dry - htol), (dry + htol), old, young, 12, 3},
-	--giant acacia_tree
-	{"default:acacia_tree", "default:acacia_leaves", vhi_cov, uncommon, 14, (stropic - ltol), (tropic + mtol), dry, (dry + htol), -1, (old + ltol), 16, 3},
-
 }
 
 
@@ -505,15 +498,13 @@ local bushlist2 = {
 	--juvenile aspen---
 	{"default:aspen_tree", "default:aspen_leaves", hi_cov, common, 6, (spolar - mtol), (temper + mtol), (average - mtol), (swamp + htol), (young - ltol), (transition + ltol), 6, 2},
 	--adult aspen
-	{"default:aspen_tree", "default:aspen_leaves", hi_cov, common, 7, (spolar - mtol), (spolar + htol), (average - mtol), (swamp + htol), (old - ltol), (young + mtol), 13, 3},
+	{"default:aspen_tree", "default:aspen_leaves", vhi_cov, common, 7, (spolar - mtol), (spolar + htol), (average - mtol), (swamp + htol), (old - ltol), (young + mtol), 13, 3},
 	--juvenile jungletree---
 	{"default:jungletree", "default:jungleleaves", hi_cov, common, 9, (stropic - htol), (tropic + htol), (damp - htol), (swamp + htol), (young - ltol), (transition + ltol), 12, 5},
 	--juvenile pine---
 	{"default:pine_tree", "default:pine_needles", vhi_cov, scattered, 18, (spolar - htol), (temper + mtol), (dry - htol), (average + ltol), (young - ltol), (young + ltol), 6, 1},
 	--adult pine
 	{"default:pine_tree", "default:pine_needles", vhi_cov, uncommon, 19, (spolar - htol), (temper + mtol), (dry - htol), (average + ltol), (old - ltol), young, 15, 1},
-	--giant pine
-	{"default:pine_tree", "default:pine_needles", vhi_cov, uncommon, 20, (spolar - htol), (temper + mtol), (dry - ltol), (average + ltol), -1, (old + ltol), 18, 1},
 
 }
 
@@ -576,8 +567,6 @@ local bushlist3 = {
 	{"default:tree", "default:leaves", hi_cov, uncommon, 15, (temper - htol), (stropic + ltol), (average - htol), (damp + mtol), (young + ltol), (transition + mtol), 6, 2, "default:apple"},
 	--adult apple
 	{"default:tree", "default:leaves", vhi_cov, common, 16, (temper - htol), (temper + htol), (average - htol), (damp + mtol), (old + mtol), (young + mtol), 12, 5, "default:apple"},
-	--giant apple
-	{"default:tree", "default:leaves", vhi_cov, uncommon, 17, (temper - htol), (temper + mtol), (average - htol), (damp + mtol), -1, (old + ltol), 16, 3, "default:apple"},
 
 }
 
@@ -662,6 +651,136 @@ mgtec.register_plant({
 
 
 
+--Thick Giant Trees..
+local bushlist4 = {
+	--giant aspen
+	{"default:aspen_tree", "default:aspen_leaves", excluder, uncommon, 8, (spolar - mtol), (spolar + mtol), (damp - mtol), (swamp + htol), -1, (old + ltol), 16, 4},
+	--giant jungletree
+	{"default:jungletree", "default:jungleleaves", excluder, uncommon, 11, (stropic - htol), (tropic + htol), (damp - htol), (swamp + htol), -1, (old + mtol), 19, 1},
+  --giant acacia_tree
+	{"default:acacia_tree", "default:acacia_leaves", excluder, scattered, 14, (stropic - ltol), (tropic + mtol), dry, (dry + htol), -1, (old + ltol), 17, 3},
+	--giant pine
+	{"default:pine_tree", "default:pine_needles", excluder, scattered, 20, (spolar - htol), (temper + mtol), (dry - ltol), (average + ltol), -1, (old + ltol), 18, 1},
+	--giant apple
+	{"default:tree", "default:leaves", excluder, scattered, 17, (temper - htol), (temper + mtol), (average - htol), (damp + mtol), -1, (old + ltol), 17, 3},
+
+}
+
+
+for i in ipairs(bushlist4) do
+	local lnodes_tr = bushlist4[i][1]
+	local lnodes_le = bushlist4[i][2]
+	local lcover = bushlist4[i][3]
+	local ldensity = bushlist4[i][4]
+	local lpriority = bushlist4[i][5]
+	local temp_min = bushlist4[i][6]
+	local temp_max = bushlist4[i][7]
+	local hum_min = bushlist4[i][8]
+	local hum_max = bushlist4[i][9]
+	local dist_min = bushlist4[i][10]
+	local dist_max = bushlist4[i][11]
+	local lheight = bushlist4[i][12]
+	local hvar = bushlist4[i][13]
+
+
+	mgtec.register_plant({
+		nodes = {
+			trunk = lnodes_tr,
+			leaves = lnodes_le,
+			fruit = lnodes_fr,
+			air = "air", ignore = "ignore",
+		},
+		cover = lcover,
+		density = ldensity,
+		priority = lpriority,
+		check = function(t, pos)
+			return
+			t.temp > temp_min
+			and t.temp < temp_max
+			and t.humidity > hum_min
+			and t.humidity < hum_max
+			and t.disturb > dist_min
+			and t.disturb < dist_max
+			and (t.nodu == c_dirtlit
+				or t.nodu == c_dirtconlit
+			  or t.nodu == c_dirtgr
+				or t.nodu == c_dirtdgr
+				or t.nodu == c_dirtsno
+				or t.nodu == c_permamoss)
+		end,
+		grow = function(nodes, pos, data, data2,area)
+			local rand = math.random()
+			local height = math.floor(lheight + (hvar * rand))
+			local radius = 4 + (2 * rand)
+
+			mgtec.make_thick_tree(pos, data, area, height, radius, nodes.trunk, nodes.leaves, nodes.air, nodes.ignore)
+
+		end,
+	})
+end
+
+
+
+
+
+
+----------------------------------------------------------------------
+--Schematics
+--[[
+--doesn't work, for ??? reasons. only when using vmanip place. place works, but is inappropriate.
+
+local schemlist1 = {
+	{ minetest.get_modpath("default").."/schematics/acacia_tree.mts", vhi_cov, abundant, 95, 0, 100, 0, 100, 0, 100, - 4, - 4},
+}
+
+
+for i in ipairs(schemlist1) do
+	local lschematic = schemlist1[i][1]
+	local lcover = schemlist1[i][2]
+	local ldensity = schemlist1[i][3]
+	local lpriority = schemlist1[i][4]
+	local temp_min = schemlist1[i][5]
+	local temp_max = schemlist1[i][6]
+	local hum_min = schemlist1[i][7]
+	local hum_max = schemlist1[i][8]
+	local dist_min = schemlist1[i][9]
+	local dist_max = schemlist1[i][10]
+	local lxa = schemlist1[i][11]  --position adjust
+	local lza = schemlist1[i][12]  --position adjust
+
+	mgtec.register_plant({
+		schematic = lschematic,
+		xa = lxa,
+		za = lza,
+		cover = lcover,
+		density = ldensity,
+		priority = lpriority,
+		check = function(t, pos)
+			return
+			t.temp > temp_min
+			and t.temp < temp_max
+			and t.humidity > hum_min
+			and t.humidity < hum_max
+			and t.disturb > dist_min
+			and t.disturb < dist_max
+			and (t.nodu == c_dirtlit
+				or t.nodu == c_dirtconlit
+			  or t.nodu == c_dirtgr
+				or t.nodu == c_dirtdgr
+				or t.nodu == c_dirtsno
+				or t.nodu == c_permamoss)
+		end,
+		schem = function(vm, pos, xa, za, schematic)
+			minetest.place_schematic_on_vmanip(vm, { x = pos.x + xa, y = pos.y, z = pos.z + za}, schematic, "random", nil, false)
+
+			--minetest.place_schematic({ x = pos.x + xa, y = pos.y, z = pos.z + za}, schematic, "random", nil, false)
+		end,
+	})
+end
+
+]]
+
+----------------------------------------------------------------------
 
 
 --[[
