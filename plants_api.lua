@@ -58,7 +58,7 @@ end)
 --Main function
 --called by the mapgen
 
-function mgtec.choose_generate_plant(conditions, pos, data, data2, area, ivm)
+function mgtec.choose_generate_plant(vm, conditions, pos, data, data2, area, ivm)
 	local rand = math.random() -- Random number to choose the plant
 	for _, plant in ipairs(mgtec.registered_plants) do -- for each registered plant
 		local cover = plant.cover
@@ -68,9 +68,15 @@ function mgtec.choose_generate_plant(conditions, pos, data, data2, area, ivm)
 				if rand < plant.density then
 					local grow = plant.grow
 					local nodes = plant.nodes
+					local schem = plant.schem
 
 					if grow then -- if a grow function is defined, then run it
 						grow(nodes, pos, data, data2, area, ivm, conditions)
+					elseif schem then --schematics
+						local schematic = plant.schematic
+						local xa = plant.xa
+						local za = plant.za
+						schem(vm, pos, xa, za, schematic)
 					else
 						if type(nodes) == "number" then -- 'nodes' is just a number
 							data[ivm] = nodes
