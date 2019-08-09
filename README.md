@@ -77,4 +77,6 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 
 - Fix conflict with beds respawn
 
-(Bugs/issues: kelp not displaying correctly (currently disabled), plants not spawning on permafrost(?),)
+- Thick trunks for giant trees
+
+(Bugs/issues: kelp not displaying correctly (currently disabled),)
