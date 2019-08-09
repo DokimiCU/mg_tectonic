@@ -66,13 +66,13 @@ local CONOI = 2500
 
 --Cave size.
 --Base cave threshold for fissures
-local BCAVTF = 0.0078
+local BCAVTF = 0.0079
 
 --Base cave threshold for caves
 local BCAVT = 0.996
 
 --Ore threshold
-local ORET = 0.97
+local ORET = 0.975
 
 
 
@@ -116,28 +116,25 @@ local function ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, 
 
 
 	--threshold adjusted with depth to get bigger down deep.
-	-- but not smaller with height or none in mountains
 	local ore_t = ORET + ybig
-	if y > 0 then
-		ore_t = ORET
-	end
+
 	--harder if actually in the cave.
 	if not nocave then
-		ore_t = ore_t + 0.2
+		ore_t = ore_t + 0.05
 	end
 
 	--height limits
 	local blend = n_strata * 50
 	local orehmin_c = -10000 + (n_strata * 500) --min height for coal (a shallow ore)
-	local orehmax_g = -200 + blend   --dig a little for gold
-	local orehmax_d = -300 + blend   --diamonds are deep
-	local orehmax_m = -400 + blend   --mese is deep
+	local orehmax_g = -100 + blend   --dig a little for gold
+	local orehmax_d = -500 + blend   --diamonds are deep
+	local orehmax_m = -600 + blend   --mese is deep
 
 	--above their threshold
 	--add some of the cave noise to increase chance of finding ores near caves
 	--working with caves: should be less inside the actual cave (less floaters), but..
 	--..reduced threshold should boost approaching cave
-	if ab_stra >= ore_t - (ab_cave2 * 0.03)  then
+	if ab_stra >= ore_t - (ab_cave2 * 0.02)  then
 
 		--split them by height and strata
 		--coal.
@@ -526,7 +523,7 @@ local np_strata = {
    spread = {x = 81, y = 81, z = 81},
    seed = 51055033,
    octaves = 3,
-   persist = 0.3,
+   persist = 0.7, --high or get few ore
    lacunarity = 3,
 }
 
@@ -765,7 +762,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--noise
 				local dnoi = ((n_terr ^3) + ((n_terr)*0.5) + ((n_terr2*n_terr)*0.8)) * 2.8 * (whs + 0.02)
 				--cliffs..
-				local dclif1 = ((ab_stra^2)*0.5)
+				local dclif1 = ((ab_stra)*0.16)
 				local dclif2 = ((ab_cave*ab_cave2)*0.05)
 
 				local den_base = dwav + dnoi - dclif1 - dclif2
@@ -840,7 +837,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					local zab = math.abs(z)
 
 					-- coastline
-					local shelfnoi = (((n_terr ^3) + (n_terr2 *0.08)) * CONOI)
+					local shelfnoi = (((n_terr ^3) + (n_terr2 *0.08)) * CONOI) - dclif2
 					local shelfsl = (3 - (n_terr^3))*y --sets slope for x
 					--local bed = SEABED + ((n_terr^3)*SEABED)
 					--Are we in the right place for oceans?
@@ -1011,7 +1008,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						--for adding/subtracting from thresholds
 						--this is to change cave size with depth
 						-- goes from 1 at map top to 0 at y=0, to -1 at map bottom (modified by strength)
-						local ybig = ((y/YMAX)*0.22)
+						local ybig = ((y/YMAX)*0.24)
 
 						--------------
 						--Fissures?
@@ -1847,50 +1844,32 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				 --we only go ahead if it's empty
 				 if data[vi] == MISCID.c_air then
 
-					 --Here we decide if it is on top of the right stuff
+					 --Substrate, all plants should check it themselves...
+					 -- so no need to check here
 					 local nodu  = data[(vi - ystridevm)]
-					 --check off against a list of any possible usable supporting nodes
-					 --this is instead of merely "if stab" so they don't get stuck ontop of themselves
-					 local plant = false
-					 if nodu == c_dirtlit
-					 or nodu == SEDID.c_dirt
-					 or nodu == c_dirtgr
-					 or nodu == c_dirtdgr
-					 or nodu == c_dirtsno
-					 or nodu == SEDID.c_sand
-					 or nodu == c_dsand
-					 or nodu == SEDID.c_sand2
-					 or nodu == SEDID.c_clay
-					 or nodu == SEDID.c_gravel
-					 or nodu == MISCID.c_river then
-						 plant = true
-					 end
-					 --do we have a viable stable node?
-					 if plant then
-						 --We need these again
-						 local n_terr  = nvals_terrain[nixz]
-						 local n_terr2  = nvals_terrain[nixz]
 
-						 --get climate data
-						 local temp
-						 local hum
-						 local distu
-						 temp, hum, distu = mgtec.climate(x, z, y, n_terr, n_terr2)
+					 --We need these again
+					 local n_terr  = nvals_terrain[nixz]
+					 local n_terr2  = nvals_terrain[nixz]
 
-						 -- pack it in a table, for plants API
-						 local conditions = {
-																 temp = temp,
-																 humidity = hum,
-																 disturb = distu,
-																 nodu = nodu
-																 }
-						 local pos = {x = x, y = y, z = z}
+					 --get climate data
+					 local temp
+					 local hum
+					 local distu
+					 temp, hum, distu = mgtec.climate(x, z, y, n_terr, n_terr2)
 
-						 --call the api... this will create plant
-							 mgtec.choose_generate_plant(conditions, pos, data, data2, area, vi)
+					 -- pack it in a table, for plants API
+					 local conditions = {
+															 temp = temp,
+															 humidity = hum,
+															 disturb = distu,
+															 nodu = nodu
+															 }
+					 local pos = {x = x, y = y, z = z}
 
-					 --done with plantables
-					 end
+					 --call the api... this will create plant
+						 mgtec.choose_generate_plant(vm, conditions, pos, data, data2, area, vi)
+
 				 --done with void areas.
 				 end
 			 --end of not underwater stuff.
