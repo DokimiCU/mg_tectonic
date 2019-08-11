@@ -13,8 +13,12 @@ local mod_storage = minetest.get_mod_storage()
 ---------------------
 --SINGLENODE
 minetest.set_mapgen_params({mgname = "singlenode", flags = "nolight"})
+
+--Despite being the up to date method this doesn't work
 --minetest.set_mapgen_setting("mgname", "singlenode", true)
 --minetest.set_mapgen_setting("flags", "nolight", true)
+
+
 
 -----------------
 --PLANTS API
@@ -23,12 +27,12 @@ dofile(minetest.get_modpath("mg_tectonic").."/plants_api.lua")
 dofile(minetest.get_modpath("mg_tectonic").."/plants.lua")
 
 if mgtec.registered_on_first_mapgen then -- Run callbacks
-		for _, f in ipairs(mgtec.registered_on_first_mapgen) do
-			f()
-		end
-		mgtec.registered_on_first_mapgen = nil
-		mgtec.register_on_first_mapgen = nil
+	for _, f in ipairs(mgtec.registered_on_first_mapgen) do
+		f()
 	end
+	mgtec.registered_on_first_mapgen = nil
+	mgtec.register_on_first_mapgen = nil
+end
 
 --=============================================================================
 -- PARAMETERS
@@ -49,35 +53,41 @@ local MAXMAG = -15000
 -- Wave Roll Size: i.e Period
 --Controls distance between ranges, and thickness.
 --This is the period at the map centre. Grows to double at map edges
-local XRS = 650 --150
+--will effect gradient and number of major mt ranges
+local XRS = 537--617
 
 --Where does the continental shelf end?
-local SHELFX = 28000
+local SHELFX = 25000
 local SHELFZ = 28000
 --How deep are the oceans?
 local SEABED = -15000
 --Strength of noise on continental shelf boundaries lines
-local CONOI = 2000
+local CONOI = 2500
 
 --Cave size.
 --Base cave threshold for fissures
-local BCAVTF = 0.006
+local BCAVTF = 0.0079
+
 --Base cave threshold for caves
-local BCAVT = 0.999
+local BCAVT = 0.996
 
 --Ore threshold
-local ORET = 0.97
+local ORET = 0.975
+
+
+
+
 
 --==================================================================
 --FUNCTIONS
 
 --Checks if this is a place for ore deposits.
 
-local function ore(ab_stra, y, ORET, ybig, n_strata, data, vi, OREID)
+local function ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, data, vi, OREID)
 	--c_coal, c_iron, c_copp, c_tin, c_gold, c_diam, c_mese
 
 	--strata thickness
-	local thick = 50 + (50 * ab_stra)
+	local thick = 100 + (50 * ab_stra)
 
 	--strata splits for ore types..
 	local t1 = 0.25
@@ -105,18 +115,26 @@ local function ore(ab_stra, y, ORET, ybig, n_strata, data, vi, OREID)
 	--]]
 
 
-	--threshold adjusted with depth
+	--threshold adjusted with depth to get bigger down deep.
 	local ore_t = ORET + ybig
+
+	--harder if actually in the cave.
+	if not nocave then
+		ore_t = ore_t + 0.05
+	end
 
 	--height limits
 	local blend = n_strata * 50
 	local orehmin_c = -10000 + (n_strata * 500) --min height for coal (a shallow ore)
-	local orehmax_g = -100 + blend   --dig a little for gold
-	local orehmax_d = -150 + blend   --diamonds are deep
-	local orehmax_m = -200 + blend   --mese is deep
+	local orehmax_g = -30 + blend   --dig a little for gold
+	local orehmax_d = -600 + blend   --diamonds are deep
+	local orehmax_m = -400 + blend   --mese is deep
 
 	--above their threshold
-	if ab_stra >= ore_t then
+	--add some of the cave noise to increase chance of finding ores near caves
+	--working with caves: should be less inside the actual cave (less floaters), but..
+	--..reduced threshold should boost approaching cave
+	if ab_stra >= ore_t - (ab_cave2 * 0.02)  then
 
 		--split them by height and strata
 		--coal.
@@ -173,13 +191,11 @@ end
 
 ------------------------------
 --Climate Calculations.
-function climate(x, z, y, n_terr, n_terr2)
-	if n_terr == nil then -- So it can be used outside of the loop
-		n_terr = nobj_terr_i:get2d({x=x,y=z})
-	end
-	if n_terr2 == nil then
-		n_terr2 = nobj_terr2_i:get2d({x = x, y = z})
-	end
+--this function can be called by other mods instead of default biome climate checks
+
+mgtec.climate = function(x, z, y, n_terr, n_terr2)
+
+
 	--east = + x, west = - x, south = -z, n = + z
 	--Climate is decided by:
 	-- -Ranges: rains come from the west (-x), rise over the ranges dumping cooling rain, descending hot and dry (east +x)
@@ -187,109 +203,164 @@ function climate(x, z, y, n_terr, n_terr2)
 	-- - Latitude: hot north, cold south
 
 	--blending
-	local blend = (((n_terr2 + n_terr)/2) * math.random(-4, 10))
+	local blend = math.random(-4, 4)
+
+	--to help climate be accessed by other mods (mainly weather)
+	--we will ignore noise (thorn0906's solution crashes when actually used,
+	-- accessing noise repeatedly likely very heavy for little gain
+	-- reducing noiseyness better? Randomness can make things throw a fit)
+	if n_terr == nil or n_terr2 == nil then
+		blend = 0
+		n_terr = 0
+		n_terr2 = 0
+	end
+
 
 	--We are Southern Hemisphererers here!
 	--decreasing temp from max z to min z (latitude) (from 100 to 0 i.e north desert to south ice)
 	-- linear increase, intercept at 50
 	local temp_z = (0.00163*z) + 50 - blend
 
-	--Fohn Winds! They are hot! The East Coast gets a temp boost
 
-	-- no Fohn? Westies are controlled by z
+	-- no Fohn? Westies are controlled by z only
 	local temp_x = 0
 
-  local lon_blend = math.random(-20,20) + n_terr * 200 --offset east-west border with some noise
+  local lon_blend = (blend*3) + n_terr * 200 --offset east-west border with some noise
 
 	-- Easterners?
 	if x > lon_blend then
+		--Fohn Winds! They are hot! The East Coast gets a temp boost
 		-- adds + 20 at centre of map, declines to zero
 		temp_x = (-0.00065*x) + 20 - blend
 	end
 
 
+
 	--Mountain tops ought to be cold!
 	--decreasing temp with hieght...and combine previous two as baseline
-	local temp = (-0.095*y) + temp_z + temp_x - blend
-
-	--blur edges
-	temp = temp + math.random(-4, 4)
+	local temp = temp_z + temp_x - blend
+	--only apply height adjustment above sea level, otherwise cooking oceans
+	--large parts of "lowlands" are very high too, so start cooling high.
+	--i.e. -0.05 = -50 at 1000m
+	if y >= 200 + (n_terr *75) then
+		temp = (-0.05*y) + temp_z + temp_x - blend
+	end
 
 	---------------
 	--what's the humidity? Rainshadow!
 	--decreasing humid from far x to x= 0,(rain shadow)
+	--tip a little past 50 for greater variety
+	--i.e. 0-60, so have wet islands on the dry side, dry islands on wet side
 
 	--if in doubt ...
-	local hum = 50 + blend
+	local hum = 50
 
 	----poitive, east coast. Dry inland
 	--linear increase,
 	if x > lon_blend then
-		hum = (0.00161*x) + blend
+		hum = (0.00194*x) + blend
 	--increasing humid from far x to x= 0,(rain shadow)
 	else  --negative , west coast. Wet inland
 		--linear increase,
-		hum = (0.00161*x) + 100 + blend
+		--starts a little lower than max (i.e. + <100)
+		--so that altitude boosts it to max
+		hum = (0.00145*x) + 85 + blend
 	end
 
 
-
-	--give a boost to low altitude.. (they tend to be near water)
-	--and to hill tops (catch rain)
-	if y < 15 + math.random(-4, 4) or y > 300 + math.random(-5, 5) then
-		hum = hum + (hum*0.05)
-		--force snow capped peaks...
-		if y > 700 + math.random(-30, 5) then
-			hum = hum + (hum * 0.55) + 30
-			temp = temp - 30
-		elseif y > 600 + math.random(-5, 5) then
-			hum = hum + (hum * 0.55)
-		elseif y > 500 + math.random(-5, 5) then
-			hum = hum + (hum * 0.35)
-		elseif y > 400 + math.random(-5, 5) then
-			hum = hum + (hum*0.15)
+	--Transition humidity
+	--this is to avoid a sharp line East West
+	-- not perfect but better than nothing?
+	if x > lon_blend and x < lon_blend + 400 then
+		--east must be wetter
+		if x < lon_blend + 100 then
+			hum = hum + 35
+		elseif x < lon_blend + 200 then
+			hum = hum + 20
+		else
+			hum = hum + 15
+		end
+	elseif x < lon_blend and x > lon_blend - 300 then
+		--west must be drier
+		if x > lon_blend - 100 then
+			hum = hum - 20
+		elseif x > lon_blend - 200 then
+			hum = hum - 10
+		else
+			hum = hum - 5
 		end
 	end
 
+
 	--disturbance regime
-	local distu = math.abs(((n_terr + n_terr2)*100)/2) + blend
+	--i.e. ecological succession
+	local distu =  math.abs(n_terr * 100 + blend)
 
---some places get disturbed more often
-	if y > 300 + math.random(-5, 5) then
-		distu = distu + (hum*0.10)
+
+	--altitude effects..
+	--coast is wet, but disturbed
+	-- hill tops catch rain but are more disturbed
+	if y > 490 or (y < 10 and y > -3) then
+		--alpine (force snowy)
+		if y > 1200 + math.random(-30, 5) then
+			hum = hum + 48
+			temp = temp - 32
+			distu = distu + 12
+			--subalpine
+		elseif y > 1100 + blend then
+			hum = hum + 24
+			temp = temp - 16
+			distu = distu + 6
+		elseif y > 1000 + blend then
+			hum = hum + 12
+			temp = temp - 8
+			distu = distu + 3
+			--montane
+		elseif y > 900 + blend then
+			temp = temp - 4
+			hum = hum + 6
+		elseif y > 700 + blend then
+			temp = temp - 2
+			hum = hum + 3
+		elseif y > 500 + blend then
+			hum = hum + 2
+			--coast
+		elseif (y <= 3 and y >= -1) then
+			-- generally wetter, but sometimes drier
+			--..coasts are more variable
+			hum = hum + 3 + blend
+			distu = distu + 5
+		end
 	end
 
 
+	--disturbance Feedsback on micro-climate
 	--calm areas hold water.
-	if distu <10 then
-		hum = hum + (hum*0.15)
-	--rough areas hold less moisture
-	elseif distu > 60 then
-		hum = hum - (hum*0.05)
-	elseif distu > 70 then
-		hum = hum - (hum*0.15)
-	elseif distu > 80 then
-		hum = hum - (hum*0.20)
-	elseif distu > 90 then
-		hum = hum - (hum*0.25)
-	elseif distu > 98 then
-		hum = hum - (hum*0.75)
-	end
-
-	--lakes
-	--[[
-	if numlakes ~= nil and numlakes ~= 0 then
-		for i = 0, numlakes do
-			laker = (190 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(55 + (5 * n_terr2))))
-			if x < lakes[n].x + laker and x > lakes[n].x - laker
-			and z < lakes[n].z + laker and z > lakes[n].z - laker then
-				hum = hum + 0.15 * (math.abs(x - lakes[n].x) + math.abs(z - lakes[n].z))
+	--exposed areas are hotter
+	--sheltered a little colder
+	if distu <15 or distu >80 then
+		if distu < 10 then
+			if distu <5 then
+				hum = hum + 8
+				temp = temp - 4
+			elseif distu <15 then
+				hum = hum + 4
+				temp = temp - 2
+			end
+		elseif distu > 80 then
+			if distu > 95 then
+				hum = hum - 12
+				temp = temp + 12
+			elseif distu > 90 then
+				hum = hum - 6
+				temp = temp + 6
+			elseif distu > 80 then
+				hum = hum - 3
+				temp = temp + 3
 			end
 		end
 	end
-	]]
 
-	hum = hum + math.random(-4, 4)
 
 return temp, hum, distu
 --done climate calculations
@@ -314,6 +385,9 @@ end
 
 
 --End of functions
+
+
+
 
 --=============================================================================
 --IDs
@@ -349,6 +423,7 @@ local c_dirtsno = minetest.get_content_id("default:dirt_with_snow")
 local c_dirtlit = minetest.get_content_id("default:dirt_with_rainforest_litter")
 local c_dirtconlit = minetest.get_content_id("default:dirt_with_coniferous_litter")
 local c_snowbl = minetest.get_content_id("default:snowblock")
+local c_snow = minetest.get_content_id("default:snow")
 local c_ice = minetest.get_content_id("default:ice")
 local c_dsand = minetest.get_content_id("default:desert_sand")
 local c_permamoss = minetest.get_content_id("default:permafrost_with_moss")
@@ -381,31 +456,36 @@ local OREID = {
 		c_coal = minetest.get_content_id("default:stone_with_coal")
 }
 
+
+
+
 --=============================================================================
 --NOISES
 
 -- 2D Mountain Terrain.
---controls: base layer variation in mountains.
+--controls: large rounded mountains.
 local np_terrain = {
    offset = 0,
    scale = 1,
-   spread = {x = 1052, y = 1280, z = 1280},
+   spread = {x = 1944, y = 3078, z = 1944},
    seed = 110013,
    octaves = 5,
-   persist = 0.5,
-   lacunarity = 2,
+   persist = 0.3,
+   lacunarity = 3,
+	 --flags = 'noeased',
 }
 
 -- 2D Soft rock Terrain.
---controls: soft rock layer variation.
+--controls: sharp peaks
 local np_terrain2 = {
    offset = 0,
    scale = 1,
-   spread = {x = 288, y = 288, z = 288},
+   spread = {x = 405, y = 243, z = 405},
    seed = 5938033,
-   octaves = 5,
-   persist = 0.5,
-   lacunarity = 2.5,
+   octaves = 3,
+   persist = 0.6,
+   lacunarity = 3,
+	 flags = 'noeased',
 }
 
 
@@ -414,11 +494,12 @@ local np_terrain2 = {
 local np_cave = {
    offset = 0,
    scale = 1,
-   spread = {x = 128, y = 224, z = 224},
+   spread = {x = 108, y = 243, z = 324},
    seed = -9103323,
-   octaves = 5,
+   octaves = 3,
    persist = 0.2,
-   lacunarity = 2,
+   lacunarity = 3,
+	 --flags = 'noeased',
 }
 
 -- 3D Caves 2
@@ -426,11 +507,12 @@ local np_cave = {
 local np_cave2 = {
   offset = 0,
 	scale = 1,
-	spread = {x = 48, y = 24, z = 48},
+	spread = {x = 81, y = 27, z = 81},
 	seed = 205301,
-	octaves = 4,
-	persist = 0.3,
-  lacunarity = 2.5,
+	octaves = 3,
+	persist = 0.5,
+  lacunarity = 3,
+	flags = 'noeased',
 }
 
 
@@ -439,12 +521,14 @@ local np_cave2 = {
 local np_strata = {
    offset = 0,
    scale = 1,
-   spread = {x = 64, y = 64, z = 64},
+   spread = {x = 81, y = 81, z = 81},
    seed = 51055033,
-   octaves = 2,
-   persist = 0.8,
-   lacunarity = 2,
+   octaves = 3,
+   persist = 0.7, --high or get few ore
+   lacunarity = 3,
 }
+
+
 
 
 ---============================================================================
@@ -458,8 +542,8 @@ local nobj_cave = nil
 local nobj_cave2 = nil
 local nobj_strata = nil
 -- For getting individual n_terr values
-nobj_terr_i = nil
-nobj_terr2_i = nil
+--nobj_terr_i = nil
+--nobj_terr2_i = nil
 
 -- Localise noise buffer table outside the loop, to be re-used for all
 -- mapchunks, therefore minimising memory use.
@@ -478,28 +562,38 @@ local data2 = {}
 --=============================================================================
 -- GENERATION
 
-local numlakes = nil
+local num_lakes = nil
 local lakes = nil
 local spawnpoint = {x = 0, z = 0}
 
 minetest.register_on_mapgen_init(function(mapgen_params)
+
+
 	math.randomseed(mapgen_params.seed)
-  spawnpoint = {x = math.random(-18000, 18000), z = math.random(-18000, 18000)}
+  spawnpoint = {x = math.random(-23000, 23000), z = math.random(-27000, 27000)}
 
 
 	-- some things need to be random, but stay constant throughout the loop
 
 	-- number of lakes
 	if lakes == nil then
-		num_lakes = math.random(21,28)
+		num_lakes = math.random(15,18)
 		lakes = {}
 		for i = 0, num_lakes do
 			--keep back from "shelf" as the coastline is actually much further back
-		    lakes[i] = {x = math.random(-10000,10000), z = math.random(-12000,12000), r = math.random(0,5)}
-				--save location for bug checking
-				mod_storage:set_int("Lake"..i.."x", lakes[i].x)
-				mod_storage:set_int("Lake"..i.."z", lakes[i].z)
-				mod_storage:set_int("Lake"..i.."river", lakes[i].r)
+			--need to keep them out of main ranges...too much erosion.
+			--choose east or west.
+			if math.random(1,3) <=2 then
+				--west lake
+				lakes[i] = {x = math.random(-13000,-5500), z = math.random(-25000,25000), r = math.random(1,5)}
+			else
+				--East lake.
+				lakes[i] = {x = math.random(13000,5500), z = math.random(-25000,25000), r = math.random(1,4)}
+			end
+			--save location for bug checking
+			mod_storage:set_int("Lake"..i.."x", lakes[i].x)
+			mod_storage:set_int("Lake"..i.."z", lakes[i].z)
+			mod_storage:set_int("Lake"..i.."river", lakes[i].r)
 		end
 	end
 end)
@@ -548,8 +642,8 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 	nobj_cave = nobj_cave or minetest.get_perlin_map(np_cave, chulen)
 	nobj_cave2 = nobj_cave2 or minetest.get_perlin_map(np_cave2, chulen)
 	nobj_strata = nobj_strata or minetest.get_perlin_map(np_strata, chulen)
-	nobj_terr_i = nobj_terr_i or minetest.get_perlin(np_terrain.seed, np_terrain.octaves, np_terrain.persist, np_terrain.scale)
-	nobj_terr2_i = nobj_terr_i or minetest.get_perlin(np_terrain2.seed, np_terrain2.octaves, np_terrain2.persist, np_terrain2.scale)
+	--nobj_terr_i = nobj_terr_i or minetest.get_perlin(np_terrain.seed, np_terrain.octaves, np_terrain.persist, np_terrain.scale)
+	--nobj_terr2_i = nobj_terr_i or minetest.get_perlin(np_terrain2.seed, np_terrain2.octaves, np_terrain2.persist, np_terrain2.scale)
 
 	-- Create a flat array of noise values from the perlin map, with the
 	-- minimum point being 'minp'.
@@ -603,15 +697,21 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--Noises
 				local n_terr  = nvals_terrain[nixz]
 				local n_terr2  = nvals_terrain2[nixz]
+				local ab_t =  math.abs(n_terr)
+				local ab_t2 =  math.abs(n_terr2)
+
+
 				local n_cave = nvals_cave[nixyz]
 				local n_cave2 = nvals_cave2[nixyz]
 				local ab_cave = math.abs(n_cave)
 				local ab_cave2 = math.abs(n_cave2)
+
 				local n_strata = nvals_strata[nixyz]
 				local ab_stra = math.abs(n_strata)
 
 				--Get the node underneath
 				local nodu  = data[(vi - ystridevm)]
+
 
 				-----------
 				-- Math
@@ -621,18 +721,20 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--x axis terrain gradient. 0 at centre. 1 at edges.
 				--Used by equations to adjust along x axis
 				local xtgrad = (xab/YMAX)
+
+				--amplitude... going from 1 to zero at map edge
+				local whs = 1-xtgrad
+
+
 				--Move up/down along x axis. Goes from +1 to -1
         --mup raises and lowers along x axis. the two terms cancel out in middle of x range (15k).
         --aimed for equations that need to lift map centre, sink edges
-        local mup = (1 - xtgrad) + (-1 * xtgrad)
+        local mup = whs + (-1 * xtgrad)
 
 
 				------------------
 				--Base Layer Waves
 				--creates the underlying, undulating and mountainous terrain
-
-				--amplitude... going from 1 to zero at map edge
-				local whs = 1-xtgrad
 
 
 				--Wave period. "Roll". i.e. how wide/steep and they are.
@@ -641,58 +743,70 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 				--The Wave!
 				local xwav = (whs*math.cos(x/x_roll))    -- north south wave (main ranges)
-				--local xwav = (whs*math.sin(x/x_roll))    -- north south wave (main ranges)
+				local xwav2 = (whs*math.cos(x/(x_roll/6.89))) --smaller more detailed wave
+
 
 
 				--Base Wave Density.
 				--This is checked against the threshold to decide where the base layer can go.
 				--the wave controls the landscape folding i.e. the bunching up caused by the plates hitting eachother.
 				--variation along this fold is caused by erosion, so is much more random...
-				--therefore it is contolled by noise (rather than another wave which is too regular)
 
-				--cubing/squaring flattens out the middle range,
+				--cubing/squaring flattens out the middle range, squaring eliminates negatives
 				--for the wave that gives it a flat shelf at sea level.
 				--for the noise it mellows part of it out, so it adds mainly extreme peaks and dips
 				--mup lowers the landscape at the edges (ocean), otherwise the flattening of height would lead to endless plains
+				--wave + raise + large hills 2 + sharp hills (moderated by large or gives sky needles) + cliffs 2
 
-				local den_base = ((xwav ^ 3)*1.2) + (mup*1.06) + ((n_terr ^2) * whs + (n_terr2*0.1))
+				--waves
+				local dwav = ((xwav2 ^ 3)*1.67) + ((xwav ^ 3)*6.89) + (mup*10.81)--+ (mup*12.16)
+				--noise
+				local dnoi = ((n_terr ^3) + ((n_terr)*0.5) + ((n_terr2*n_terr)*0.8)) * 2.8 * (whs + 0.02)
+				--cliffs..
+				local dclif1 = ((ab_stra)*0.16)
+				local dclif2 = ((ab_cave*ab_cave2)*0.05)
+
+				local den_base = dwav + dnoi - dclif1 - dclif2
 
 
-				---Base Threshold
-				local t_base = 0.0018*y
+				---Base Threshold (use for all of them now)
+				--effects heights of landscape
+				local t_base = 0.00969*y --0.01036*y
 
 
 
 				-------------------------------------
 				--Soft Rock
 				--layered on top of the base layer.
-				--soft sandstone... a good enough stand in for easily erobable rocks
+				--adding to previous: x >1 = steeper. x < 1 flatter
+				--soft sandstone... easily erobable rocks sedimentary rocks
 				--creates regions of soft rock on top of the base layer in lowlands
+				--base + boost + noise - cliff
+
+
 
 				--density
-					local den_soft = (den_base*1.05) + (n_terr2 ^3) -(xtgrad*0.2)
-					--threshold
-					local t_soft = 0.02*y
+				local den_soft = (den_base*0.4) + 1.3 + ((1-n_terr) * (2.22 - (xtgrad*2))) - dclif2
+				--threshold (redundant)
+				--local t_soft = 0.006*y -0.15
+
+				------------------------------------
+				--Alluvium
+				--eroded rock etc, deposited on lowlands
+
+				--density
+				local den_allu = (den_soft*0.95) + 0.1 - dclif2
+				--threshold (redundant)
+				--local t_allu = 0.0075*y -0.17
 
 
-					------------------------------------
-					--Alluvium
-					--eroded rock etc, deposited on lowlands
-
-					--density
-					local den_allu = (den_soft*1.002)
-					--threshold
-					local t_allu = 0.03*y -0.1
-
-
-					------------------------------------
-					--Sediment
-					--subsurface soils and sands
-					--density
-					local den_sedi = (den_allu*1.01)
-					--threshold
-					local t_sedi = 0.03*y-0.2
-
+				------------------------------------
+				--Sediment
+				--subsurface soils and sands
+				--density
+				local den_sedi = den_allu + 0.03 -- dclif2
+				--threshold (redundant)
+				--local t_sedi = 0.0085*y -0.18
 
 				-------------------------------------
 				--Checks
@@ -712,24 +826,25 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				-------------------------------
 				--Seperate Earth and Sky
 				if den_base > t_base
-				or den_soft > t_soft
-				or den_allu > t_allu
-				or den_sedi > t_sedi then
+				or den_soft > t_base
+				or den_allu > t_base
+				or den_sedi > t_base then
 
 					--Seperate Earth from oceans, rivers, caves.
 					----------------------------
-					-- Ocean Basin
-					-- This is so the oceans aren't a flat 5m deep boring yawn.
-
+					-- Ocean Basins/Erosion
+					--carves out a continental shelf.
+					--lowers mountains so can have sea at North and South
 					local zab = math.abs(z)
 
-					local shelfnoi = (n_terr * n_terr2) * CONOI -- softens cliffs
-					local shelfsl = (math.abs((n_terr*10) + (n_terr2*2))) * (0.3*y)*20  --sets slope
-					local bed = SEABED + ((n_terr^2)*SEABED)
+					-- coastline
+					local shelfnoi = (((n_terr ^3) + (n_terr2 *0.08)) * CONOI) - dclif2
+					local shelfsl = (3 - (n_terr^3))*y --sets slope for x
+					--local bed = SEABED + ((n_terr^3)*SEABED)
 					--Are we in the right place for oceans?
-					if (xab > ((SHELFX + shelfnoi) - shelfsl)
+					if (xab > ((SHELFX + (shelfnoi*2)) - shelfsl)
 					or zab > ((SHELFZ + shelfnoi) - shelfsl))
-					and y >= bed  then --avoids  infinitely deepening oceans
+					and y >= SEABED  then --max depth,
 						basin = true
 					end
 
@@ -738,6 +853,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					--These are put in "manually" as doing it based on noise does not work well for rivers
 					--The point of these is:
 					-- to bring water to the dry interior, provide access, features of interest, greater altitude variation.
+					--they have a large erosion effect on the surrounding area. So need very steep sides
 					------------------------------
 
 					--[[
@@ -795,31 +911,45 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					--Random lakes
 					if not basin and not river_basin then
 						for n = 0, num_lakes do
-		    				local laked = 25 + ((20 * n_terr) + (8 * n_terr2))
-		    				local laker = (160 + (75 * n_terr) + (75 * n_terr2)) * (1 + (y/(55 + (5 * n_terr2))))
-		    				if x < lakes[n].x + laker and x > lakes[n].x - laker
+							local laked = -25 + (10 * n_terr2)
+		    			local laker = (160 + (100 * n_terr) + (25 * n_terr2)) * (1 + (y/(160 + (20 * n_terr))))
+		    			if x < lakes[n].x + (laker*1.6) and x > lakes[n].x - (laker*1.6)
 							and z < lakes[n].z + laker and z > lakes[n].z - laker
-							and t_base > den_base - laked then
-							    river_basin = true
+							and y > laked then
+								river_basin = true
 							end
 
 							--Rivers draining them
-							if lakes[n].r <2 then
-								--local channel = (40 +(n_terr2*30))*math.cos(xab/36)
-								--local w = (16 + (n_terr2*7) + (10*xtgrad)) * (1 + (y/(14 - (3*xtgrad))))
+							if lakes[n].r <= 4 then
+								--local interr = 1-n_terr
+								local interr2 = 1-n_terr2
 
-								local channel = (17 +(n_terr2*40))*math.cos(x/36)
-								local w = ((6 + (0.0003*xab)) + (math.abs(n_terr2*(10+ (0.0003*xab))))) * (1 + (y/8))
+								--rivers have real world mathmatical geometry
+								--width (actually half the width)
+								local wp = (8 + (0.0003*xab))
+								local w = (wp * (1 + (y/(8 + (n_terr*2))))) - ((n_terr2^3)*3)
+
+								--period of channel
+								local per_ch = ((3.5 * n_terr) + 22) * wp
+								--local per_ch = 176
+								--amplitude
+								local am_ch = (interr2 + 4.6) * wp
+								--local am_ch = 37
+
+								--wave for channel
+								local c1 = ((am_ch)*math.sin(x/per_ch))
+								local c2 = (12 + (interr2*3))*math.sin(x/(56 + (n_terr*8)))
+								local channel = c1 + c2
 
 								--line it up north-south
 								if z <= lakes[n].z + channel + w
 								and z >= lakes[n].z + channel - w then
 									--make sure the river is on the same side East-west of the map as the lake!
 									--east lakes, only place the river further east
-									if lakes[n].x > 0 and x > lakes[n].x then
+									if lakes[n].x > 0 and x - w > lakes[n].x then
 										river_basin = true
 										--west lakes, only place river further west
-									elseif lakes[n].x < 0 and x < lakes[n].x then
+									elseif lakes[n].x < 0 and x + w < lakes[n].x then
 										river_basin = true
 									end
 								end
@@ -879,7 +1009,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						--for adding/subtracting from thresholds
 						--this is to change cave size with depth
 						-- goes from 1 at map top to 0 at y=0, to -1 at map bottom (modified by strength)
-						local ybig = ((y/YMAX)*0.2)
+						local ybig = ((y/YMAX)*0.24)
 
 						--------------
 						--Fissures?
@@ -892,21 +1022,20 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 						--check... can we fill in the non-cave?
 						--extra noises break up sheet
-						if ab_cave >= cav_t1
-						or (ab_cave2 ^ 3) >= cav_t1
+						if (ab_cave) >= cav_t1
+						or (n_cave2) >= cav_t1
 						then
 							nocave = true
 						end
 
 						-----------------
 						--Round caves?
-						--These use the same noise as fissures, so they become side chambers.
 						-- reverse deal from fissures.
 						--If the noise is above the threshold we empty out a cave
 						-- lower threshold = bigger cave..
 						local cav_t2 = BCAVT + ybig
 
-						if ab_cave2 ^ 2 >= cav_t2
+						if n_cave2 ^ 2 >= cav_t2
 						then
 							nocave = false
 						end
@@ -918,13 +1047,13 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						if den_base > t_base then
 
 							--first do ore, with no regard for caves(we want it inside caves)
-							if ore(ab_stra, y, ORET, ybig, n_strata, data, vi, OREID)
+							if ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, data, vi, OREID)
 							then
 								void = false
 							--if it wasn't ore and isn't cave now do rock
 							elseif nocave then
 								--strata splits..
-								local thick = 9 + (5*ab_stra)
+								local thick = 11 + (3*n_strata)
 								local ystrata = math.sin(y/thick)
 
 								--an occassional layer of obsidian around caves
@@ -960,7 +1089,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 										void = false
 									end
 								-- red stone layer
-								elseif ystrata < 0 then
+								else
 									data[vi] = c_stone2
 									void = false
 								--finished with rocks and ores
@@ -973,7 +1102,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						------------------------
 						--Place soft rock
 						if void then
-							if den_soft > t_soft then
+							if den_soft > t_base then
 
 								-----------------
 								--Caves for soft rock
@@ -984,18 +1113,26 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 									nocave = false
 								end
 
-								if nocave then
+								--first do ore, with no regard for caves(we want it inside caves)
+								if ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, data, vi, OREID)
+								then
+									void = false
+								--if it wasn't ore and isn't cave now do rock
+								elseif nocave then
 									--strata splits..
-									local thick = 5 + (4*ab_stra)
+									local thick = 7 + (2*n_strata)
 									local ystrata = math.sin(y/thick)
 
 									--a little lost base rock...
-									--with coal
+									--with coal and iron
 									if ystrata >= 0.7
 									and ystrata <= 0.9
 									and n_strata > 0.8 then
-										if math.random(1,500) == 1 then
+										if math.random(1,10) == 1 then
 											data[vi] = OREID.c_coal
+											void = false
+										elseif math.random(1,100) == 1 then
+											data[vi] = OREID.c_iron
 											void = false
 										else
 											data[vi] = c_stone
@@ -1054,14 +1191,27 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						end
 
 						-- the following need to be stable
-						if stab then
+						--but some solid things are stable..e.g. clay,.
+						--... so covers caves, rather than have giant holes
+						--allows "clay caves". Height limit or it coats everything in clay
+						--only in areas where sediment is higher than base rock (so not coating all caves)
+						if not stab
+						and den_soft < den_sedi
+						and y > (-320 + (n_strata*8))
+						--and y < (128 + (n_strata*16))
+						then
+							if den_sedi > t_base and nocave then
+								data[vi] = SEDID.c_clay
+								void = false
+							end
+						elseif stab then
 
 							--Place alluvium
 							if void then
-								if den_allu > t_allu and nocave then
+								if den_allu > t_base and nocave then
 
 									--strata splits..
-									local thick = 10 + (50*ab_stra)
+									local thick = 31 + (29*n_strata)
 									local ystrata = math.sin(y/thick)
 
 									local t1 = 0.4
@@ -1097,7 +1247,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							--these are done to match the location
 
 							if void then
-								if den_sedi > t_sedi and nocave then
+								if den_sedi > t_base and nocave then
 									--non-basin seas
 									if y < SEA-1 then
 										data[vi] = SEDID.c_sand
@@ -1107,7 +1257,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 										local temp
 										local hum
 										local distu
-										temp, hum, distu = climate(x, z, y, n_terr, n_terr2)
+										temp, hum, distu = mgtec.climate(x, z, y, n_terr, n_terr2)
 
 										--We have some fiddly coastal stuff.
 										--on a node, that is sea surface or one above
@@ -1115,10 +1265,10 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 											--a humid place? will make swamps
 											if hum > 80  then  --boundary for swamp
 												--let's place a swampy mire
-												swamp(data, vi, 50, SEDID.c_clay, MISCID.c_river)
+												swamp(data, vi, 40, SEDID.c_clay, MISCID.c_river)
 												void = false
 											elseif hum > 60  then -- less swampy
-												swamp(data, vi, 150, SEDID.c_clay, MISCID.c_river)
+												swamp(data, vi, 80, SEDID.c_clay, MISCID.c_river)
 												void = false
 											--wasn't humid . Do dunes
 											else
@@ -1170,6 +1320,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							--finished sediments
 							end
 						--done with stables.
+
 						end
 
 					--finished with not in basin
@@ -1186,14 +1337,42 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					local temp
 					local hum
 					local distu
-					temp, hum, distu = climate(x, z, y, n_terr, n_terr2)
+					temp, hum, distu = mgtec.climate(x, z, y, n_terr, n_terr2)
 
 					--ocean
 					if y <= SEA-1 and (basin == true or river_basin == true) then
 						--floating ice
-						if (nodu == MISCID.c_water or nodu ~= MISCID.c_river or nodu == c_ice) and temp < 30 and distu > 5 and distu <40 and y == SEA-1 then
+						--
+						if temp < 30 and distu > 6 and distu <40 and y == SEA-1 then
 							data[vi] = c_ice
 							void = false
+							--thicker ice in low disturbance
+							if distu < 30 then
+								if nodu == MISCID.c_water or nodu == MISCID.c_river then
+									--This is nodu: nodu  = data[(vi - ystridevm)]
+									--overwrite water
+									data[(vi - ystridevm)] = c_ice
+									--thicker?
+									if distu < 20 then
+										if data[(vi - 2*ystridevm)] == MISCID.c_water then
+											data[(vi - 2*ystridevm)] = c_ice
+											--higher on top
+											--can't do ice or it becomes an island!
+											if data[(vi + ystridevm)] == MISCID.c_air then
+												data[(vi + ystridevm)] = c_snow
+											end
+											--even thicker
+											if distu < 10 then
+												if data[(vi - 3*ystridevm)] == MISCID.c_water then
+													data[(vi - 3*ystridevm)] = c_ice
+												end
+												--higher on top
+												data[(vi + ystridevm)] = c_snowbl
+											end
+										end
+									end
+								end
+							end
 							--seafloor
 						elseif nodu ~= MISCID.c_water
 						and nodu ~= MISCID.c_river
@@ -1206,14 +1385,14 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 						then
 							--corals: low disturbance, warm, shallow
 							if not river_basin
-							and distu > 3
-							and distu < 15
-							and temp > 70
-							and y <= SEA-2
-							and y > SEA - 10
+							and distu > 12
+							and distu < 30
+							and temp > 60
+							and y <= SEA-3
+							and y > SEA - 17
 							then
 								-- allow stacking coral
-								local c = math.random(1,21)
+								local c = math.random(1,31)
 								if c <= 1 then
 									data[vi] = MISCID.c_water
 									void = false
@@ -1240,23 +1419,23 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							--[[Spawning, but not displaying correctly!
 							--kelp: higher disturbance, colder, deeper
 							elseif not river_basin
-							and distu > 15
-							and distu < 40
+							and distu > 35
+							and distu < 60
 							and temp < 75
 							and y <= SEA-5
 							and y > SEA - 22
 							then
 								data[vi] = MISCID.c_kelpsand
-								void = false
-]]
+								void = false]]
+
 							--low disturbance do fine sediment
 							elseif distu < 5 and nodu ~= SEDID.c_clay and nodu ~= SEDID.c_sand2 and nodu ~= c_coral and nodu ~= c_ice then
 								data[vi] = SEDID.c_clay
 								void = false
 							-- volcanic if rough
-							elseif distu > 95 and nodu ~= c_ice then
+							elseif distu > 96 and nodu ~= c_ice then
 								local c = math.random(1,10)
-								if c > 4 then
+								if c > 6 then
 									data[vi] = c_obsid
 									void = false
 								else
@@ -1391,19 +1570,19 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 										elseif temp <8 then
 											--disturbance gives stones.
 											if distu < 50 then
-												swamp(data, vi, 5, c_permamoss, c_ice)
+												swamp(data, vi, 10, c_permamoss, c_ice)
 												void = false
 											else
-												swamp(data, vi, 5, c_permastone, c_ice)
+												swamp(data, vi, 10, c_permastone, c_ice)
 												void = false
 											end
 											--cold
 										elseif temp <30 then
-											swamp(data, vi, 5, c_dirtsno, MISCID.c_river)
+											swamp(data, vi, 10, c_dirtsno, MISCID.c_river)
 											void = false
 											--muddy
 										else
-											swamp(data, vi, 3, SEDID.c_clay, MISCID.c_river)
+											swamp(data, vi, 10, SEDID.c_clay, MISCID.c_river)
 											void = false
 										end
 										--coast swampy..
@@ -1425,11 +1604,11 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 											end
 											--cold
 										elseif temp <30 then
-											swamp(data, vi, 10, c_dirtsno, MISCID.c_river)
+											swamp(data, vi, 20, c_dirtsno, MISCID.c_river)
 											void = false
 											--muddy
 										else
-											swamp(data, vi, 5, SEDID.c_clay, MISCID.c_river)
+											swamp(data, vi, 20, SEDID.c_clay, MISCID.c_river)
 											void = false
 										end
 									end
@@ -1598,23 +1777,23 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								end
 							end
 
-						--Forests..
-						--less disturbance. with enough moisture, not too cold.
-					 elseif distu < 35 and hum > 40 and temp > 20 and temp < 90 then
+							--Forests..
+							--less disturbance. with enough moisture, not too cold.
+						elseif distu < 25 and hum > 30 and temp > 25 and temp < 90 then
 							--conifers... cold and dry
-							if temp < 42 and hum < 37 then
+							if temp < 40 and hum < 45 then
 								data[vi] = c_dirtconlit
 								void = false
-							--unfrozen
+							--all the others...because that's all we got
 							else
 								data[vi] = c_dirtlit
 								void = false
 							end
 
-						--All the rest must be grasslands
+							--All the rest must be grasslands
 						else
 							--dry...
-							if hum < 40 or temp >80 then
+							if hum < 40 or temp >90 then
 								data[vi] = c_dirtdgr
 								void = false
 							--cold
@@ -1694,50 +1873,32 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				 --we only go ahead if it's empty
 				 if data[vi] == MISCID.c_air then
 
-					 --Here we decide if it is on top of the right stuff
+					 --Substrate, all plants should check it themselves...
+					 -- so no need to check here
 					 local nodu  = data[(vi - ystridevm)]
-					 --check off against a list of any possible usable supporting nodes
-					 --this is instead of merely "if stab" so they don't get stuck ontop of themselves
-					 local plant = false
-					 if nodu == c_dirtlit
-					 or nodu == SEDID.c_dirt
-					 or nodu == c_dirtgr
-					 or nodu == c_dirtdgr
-					 or nodu == c_dirtsno
-					 or nodu == SEDID.c_sand
-					 or nodu == c_dsand
-					 or nodu == SEDID.c_sand2
-					 or nodu == SEDID.c_clay
-					 or nodu == SEDID.c_gravel
-					 or nodu == MISCID.c_river then
-						 plant = true
-					 end
-					 --do we have a viable stable node?
-					 if plant then
-						 --We need these again
-						 local n_terr  = nvals_terrain[nixz]
-						 local n_terr2  = nvals_terrain[nixz]
 
-						 --get climate data
-						 local temp
-						 local hum
-						 local distu
-						 temp, hum, distu = climate(x, z, y, n_terr, n_terr2)
+					 --We need these again
+					 local n_terr  = nvals_terrain[nixz]
+					 local n_terr2  = nvals_terrain[nixz]
 
-						 -- pack it in a table, for plants API
-						 local conditions = {
-																 temp = temp,
-																 humidity = hum,
-																 disturb = distu,
-																 nodu = nodu
-																 }
-						 local pos = {x = x, y = y, z = z}
+					 --get climate data
+					 local temp
+					 local hum
+					 local distu
+					 temp, hum, distu = mgtec.climate(x, z, y, n_terr, n_terr2)
 
-						 --call the api... this will create plant
-							 mgtec.choose_generate_plant(conditions, pos, data, data2, area, vi)
+					 -- pack it in a table, for plants API
+					 local conditions = {
+															 temp = temp,
+															 humidity = hum,
+															 disturb = distu,
+															 nodu = nodu
+															 }
+					 local pos = {x = x, y = y, z = z}
 
-					 --done with plantables
-					 end
+					 --call the api... this will create plant
+						 mgtec.choose_generate_plant(vm, conditions, pos, data, data2, area, vi)
+
 				 --done with void areas.
 				 end
 			 --end of not underwater stuff.
@@ -1806,9 +1967,11 @@ end
 
 function spawnplayer(player,alt)
     local pos = spawnpoint
-		--scatter a little to avoid respawning bug when reusing same place
-		--pos.x = spawnpoint.x + math.random(-500 , 500)
-		--pos.z = spawnpoint.z + math.random(-500, 500)
+
+
+		--an attempt to reduce time...puts player underground :-(
+		--local xtgr_spawn = 1-(math.abs(pos.x)/YMAX)
+		--alt = math.floor(alt * xtgr_spawn)
 
     for i = alt, 0,-1 do
 				alt = i
@@ -1851,7 +2014,8 @@ end
 
 -----------------------------------------------------------
 minetest.register_on_newplayer(function(player)
-	spawnplayer(player, 1300)
+
+	spawnplayer(player,2600)
 
 
 	-- Get the inventory of the player
@@ -1869,9 +2033,65 @@ minetest.register_on_newplayer(function(player)
 end)
 
 
+--default clouds are way too low...raise them
+local init_cloud = function(player)
+	player:set_clouds({color="#FFFFFFFC", density=0.40, height=1500, thickness=25, speed ={x=1, z=0}})
+end
+
+--use beds rather than original spawn point
+local enable_bed_respawn = minetest.settings:get_bool("enable_bed_respawn")
+if enable_bed_respawn == nil then
+	enable_bed_respawn = true
+end
+
+
 --this is needed to stop it putting player at 0,0,0...but overrides bed save :-(
 minetest.register_on_respawnplayer(function(player)
-			savedspawn(player)
-			--disable default
-			return true
+	init_cloud(player)
+	-- Avoid respawn conflict with beds mod
+	if beds
+	and enable_bed_respawn
+	and	beds.spawn[player:get_player_name()] then
+		return
+	end
+
+	savedspawn(player)
+	--disable default
+	return true
 end)
+
+
+minetest.register_on_joinplayer(init_cloud)
+
+---------------------------------------
+--Bug testing Climate tool
+--need to give n_terr etc or gives inaccurate reading,
+-- and blend gives a random margin of error
+--[[
+local enviro_meter = function(user, pointed_thing)
+
+  local name =user:get_player_name()
+  local pos = user:getpos()
+
+	minetest.chat_send_player(name, minetest.colorize("#00ff00", "ENVIRONMENT MEASUREMENT:"))
+
+  local t,h,d = mgtec.climate(pos.x, pos.z, pos.y)
+
+  minetest.chat_send_player(name, minetest.colorize("#cc6600","TEMPERATURE INDEX LEVEL = "..t))
+	minetest.chat_send_player(name, minetest.colorize("#cc6600","HUMIDITY INDEX LEVEL = "..h))
+	minetest.chat_send_player(name, minetest.colorize("#cc6600","DISTURBANCE INDEX LEVEL = "..d))
+
+
+end
+
+
+minetest.register_craftitem("mg_tectonic:enviro_meter", {
+	description = "Enviro Meter",
+	inventory_image = "default_paper.png",
+	stack_max = 1,
+
+	on_use = function(itemstack, user, pointed_thing)
+		enviro_meter(user, pointed_thing)
+	end,
+})
+]]

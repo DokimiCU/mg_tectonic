@@ -74,6 +74,8 @@ local function make_leavesblob(pos, data, area, leaves, air, ignore, radius, np,
 	end
 end
 
+
+
 --==================================================================================
 
 --Generic tree
@@ -81,16 +83,56 @@ end
 function mgtec.make_tree(pos, data, area, height, radius, trunk, leaves, air, ignore)
 	local ystride = area.ystride -- Useful to get the index above
 	local iv = area:indexp(pos)
+
 	for i = 1, height do -- Build the trunk
 		data[iv] = trunk
 		iv = iv + ystride -- increment by one node up
 	end
+
 	make_root(pos.x, pos.y, pos.z, data, area, trunk, air)
+
 	local np = {offset = 0.8, scale = 0.4, spread = {x = 8, y = 4, z = 8}, octaves = 3, persist = 0.5} -- trees use a PerlinNoise to place leaves
 	pos.y = pos.y + height - 1 -- pos was at the sapling position. By adding height we have the first air node above the trunk, so subtract 1 to get the highest trunk node.
 	make_leavesblob(pos, data, area, leaves, air, ignore, {x = radius, y = radius, z = radius}, np) -- Generate leaves
 end
 
+------------------------------------------------------------------
+--Thick tree
+-- tree + roots
+function mgtec.make_thick_tree(pos, data, area, height, radius, trunk, leaves, air, ignore)
+	local ystride = area.ystride -- Useful to get the index above
+	local iv = area:indexp(pos)
+
+	iv = iv - 2 * ystride
+	for i = 1, height do -- Build the trunk
+		data[iv] = trunk
+
+		local side = iv + 1
+		data[side] = trunk
+		side = iv - 1
+		data[side] = trunk
+		side = iv + 1 * area.zstride
+		data[side] = trunk
+		side = iv - 1 * area.zstride
+		data[side] = trunk
+
+		iv = iv + ystride -- increment by one node up
+	end
+
+	make_root(pos.x, pos.y, pos.z, data, area, trunk, air)
+
+	local np = {offset = 0.8, scale = 0.4, spread = {x = 12, y = 4, z = 12}, octaves = 3, persist = 0.6} -- trees use a PerlinNoise to place leaves
+
+	pos.y = pos.y + height - 1 -- pos was at the sapling position. By adding height we have the first air node above the trunk, so subtract 1 to get the highest trunk node.
+	make_leavesblob(pos, data, area, leaves, air, ignore, {x = radius, y = radius, z = radius}, np) -- Generate leaves
+
+	pos.y = pos.y - (height/5)
+	make_leavesblob(pos, data, area, leaves, air, ignore, {x = radius, y = radius, z = radius}, np) -- Generate leaves
+
+end
+
+
+-----------------------------------------------------------------------
 --without roots
 function mgtec.make_tree2(pos, data, area, height, radius, trunk, leaves, air, ignore)
 	local ystride = area.ystride -- Useful to get the index above
@@ -158,4 +200,3 @@ function mgtec.make_layered_tree(pos, data, area, height, radius, trunk, leaves,
 		pos.y = pos.y - math.random(2, 3)
 	end
 end
-
