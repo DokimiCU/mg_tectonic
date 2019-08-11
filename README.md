@@ -73,10 +73,12 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 
 - custom cloud height
 
-- Make climate function more accessible to allow its use by weather mods etc
+- Make climate function more accessible to allow its use by weather mods etc (possibly causes rare bugs in mapgen??)
 
 - Fix conflict with beds respawn
 
 - Thick trunks for giant trees
+
+- Various minor fixes and improvements
 
 (Bugs/issues: kelp not displaying correctly (currently disabled),)
