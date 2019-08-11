@@ -126,9 +126,9 @@ local function ore(nocave, ab_stra, ab_cave, ab_cave2, y, ORET, ybig, n_strata, 
 	--height limits
 	local blend = n_strata * 50
 	local orehmin_c = -10000 + (n_strata * 500) --min height for coal (a shallow ore)
-	local orehmax_g = -100 + blend   --dig a little for gold
-	local orehmax_d = -500 + blend   --diamonds are deep
-	local orehmax_m = -600 + blend   --mese is deep
+	local orehmax_g = -30 + blend   --dig a little for gold
+	local orehmax_d = -600 + blend   --diamonds are deep
+	local orehmax_m = -400 + blend   --mese is deep
 
 	--above their threshold
 	--add some of the cave noise to increase chance of finding ores near caves
@@ -494,10 +494,10 @@ local np_terrain2 = {
 local np_cave = {
    offset = 0,
    scale = 1,
-   spread = {x = 162, y = 162, z = 324},
+   spread = {x = 108, y = 243, z = 324},
    seed = -9103323,
-   octaves = 4,
-   persist = 0.3,
+   octaves = 3,
+   persist = 0.2,
    lacunarity = 3,
 	 --flags = 'noeased',
 }
