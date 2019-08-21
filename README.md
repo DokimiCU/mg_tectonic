@@ -1,7 +1,7 @@
 # mg_tectonic
 by Dokimi
 
-Current version 0.3
+Current version 0.3.0.1
 
 # Map Outline
 A naturalistic mapgen for Minetest, based around mimicking the landscape of a tectonic plate boundary.
@@ -80,5 +80,9 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 - Thick trunks for giant trees
 
 - Various minor fixes and improvements
+
+0.3.0.1:
+
+- patch lake cliff bug
 
 (Bugs/issues: kelp not displaying correctly (currently disabled),)
