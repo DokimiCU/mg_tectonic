@@ -946,10 +946,10 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								and z >= lakes[n].z + channel - w then
 									--make sure the river is on the same side East-west of the map as the lake!
 									--east lakes, only place the river further east
-									if lakes[n].x > 0 and x - w > lakes[n].x then
+									if lakes[n].x > 0 and x + w > lakes[n].x then
 										river_basin = true
 										--west lakes, only place river further west
-									elseif lakes[n].x < 0 and x + w < lakes[n].x then
+									elseif lakes[n].x < 0 and x - w < lakes[n].x then
 										river_basin = true
 									end
 								end
