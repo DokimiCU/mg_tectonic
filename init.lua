@@ -25,6 +25,11 @@ minetest.set_mapgen_params({mgname = "singlenode", flags = "nolight"})
 dofile(minetest.get_modpath("mg_tectonic").."/trees.lua")
 dofile(minetest.get_modpath("mg_tectonic").."/plants_api.lua")
 dofile(minetest.get_modpath("mg_tectonic").."/plants.lua")
+--may cause bugs????
+if minetest.get_modpath("mgt_flora") ~= nil then
+	dofile(minetest.get_modpath("mgt_flora").."/plants_reg.lua")
+end
+
 
 if mgtec.registered_on_first_mapgen then -- Run callbacks
 	for _, f in ipairs(mgtec.registered_on_first_mapgen) do
@@ -1332,7 +1337,9 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				--Skins
 
 
-				if void and nodu ~= nil and nodu ~= MISCID.c_ignore then
+				if void
+				and nodu ~= nil
+				and nodu ~= MISCID.c_ignore then
 					--now we need climate data.
 					local temp
 					local hum
@@ -1340,9 +1347,10 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					temp, hum, distu = mgtec.climate(x, z, y, n_terr, n_terr2)
 
 					--ocean
-					if y <= SEA-1 and (basin == true or river_basin == true) then
+					if y <= SEA-1
+					and nodu ~= MISCID.c_air
+					and (basin == true or river_basin == true) then
 						--floating ice
-						--
 						if temp < 30 and distu > 6 and distu <40 and y == SEA-1 then
 							data[vi] = c_ice
 							void = false
@@ -1387,7 +1395,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							if not river_basin
 							and distu > 12
 							and distu < 30
-							and temp > 60
+							and temp > 40
 							and y <= SEA-3
 							and y > SEA - 17
 							then
@@ -1416,20 +1424,47 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 									data[vi] = c_coral
 									void = false
 								end
-							--[[Spawning, but not displaying correctly!
 							--kelp: higher disturbance, colder, deeper
 							elseif not river_basin
-							and distu > 35
+							and math.random()<0.5 --spacing
 							and distu < 60
-							and temp < 75
-							and y <= SEA-5
-							and y > SEA - 22
+							and distu > 10
+							and temp < 80
 							then
+								--short kelp in shallows
+								if y <= SEA-5
+								and y > SEA - 7 then
+									data[vi] = MISCID.c_kelpsand
+									data2[vi] = math.random(3, 4) * 16
+									void = false
+								elseif y <= SEA-7
+								and y > SEA - 9 then
+									data[vi] = MISCID.c_kelpsand
+									data2[vi] = math.random(4, 6) * 16
+									void = false
+								elseif y <= SEA-9
+								and y > SEA - 24 then
+									data[vi] = MISCID.c_kelpsand
+									data2[vi] = math.random(6, 8) * 16
+									void = false
+								end
+
+							--rare short kelp:
+							--everywhere needs some sea life
+							elseif not river_basin
+							and y <= SEA - 5
+						 	and y > SEA - 15
+							and math.random()<0.1 then
 								data[vi] = MISCID.c_kelpsand
-								void = false]]
+								data2[vi] = math.random(3, 4) * 16
+								void = false
 
 							--low disturbance do fine sediment
-							elseif distu < 5 and nodu ~= SEDID.c_clay and nodu ~= SEDID.c_sand2 and nodu ~= c_coral and nodu ~= c_ice then
+							elseif distu < 5
+							and nodu ~= SEDID.c_clay
+							and nodu ~= SEDID.c_sand2
+							and nodu ~= c_coral
+							and nodu ~= c_ice then
 								data[vi] = SEDID.c_clay
 								void = false
 							-- volcanic if rough
@@ -1678,7 +1713,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 									data[vi] = c_snowbl
 									void = false
 								--warmer give dirt
-								else
+							elseif nodu ~= c_ice then
 									data[vi] = c_dirtsno
 									void = false
 								end
@@ -1790,6 +1825,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								void = false
 							end
 
+
 							--All the rest must be grasslands
 						else
 							--dry...
@@ -1895,9 +1931,30 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 															 nodu = nodu
 															 }
 					 local pos = {x = x, y = y, z = z}
-
 					 --call the api... this will create plant
-						 mgtec.choose_generate_plant(vm, conditions, pos, data, data2, area, vi)
+					 mgtec.choose_generate_plant(vm, conditions, pos, data, data2, area, vi)
+
+					 --do snow pack over everything
+					if data[vi] == MISCID.c_air
+					and nodu ~= MISCID.c_ignore
+					and nodu ~= MISCID.c_air
+					and hum > 15
+					and temp < 30
+					and nodu ~= c_snow
+					and y >= SEA + 2 then
+						local name = minetest.get_name_from_content_id(nodu)
+
+						if not minetest.registered_nodes[name] then
+							return nil
+						end
+						local draw = minetest.registered_nodes[name]['drawtype']
+
+						if draw == 'normal'
+						or draw == 'allfaces_optional'  then
+							data[vi] = c_snow
+						 void = false
+					 end
+				 end
 
 				 --done with void areas.
 				 end
