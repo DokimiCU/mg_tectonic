@@ -1,7 +1,7 @@
 # mg_tectonic
 by Dokimi
 
-Current version 0.3.1
+Current version 0.3.1 + Odacirs improvements + experiments
 
 # Map Outline
 A naturalistic mapgen for Minetest, based around mimicking the landscape of a tectonic plate boundary.
@@ -90,5 +90,12 @@ The plants api is adapted from the Valley's mapgen by Gael-de-Sailly.
 - fix kelp bug
 
 - add snow dust
+
+Odacir: spawn code, climate compatibility
+
+Experimental:
+- noise on waves (for greater landscape variety)
+- add dry dirts
+
 
 (Bugs/issues: kelp and corals only turning up on rocky coasts??)
