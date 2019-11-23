@@ -10,14 +10,6 @@
 mgtec = {}
 local mod_storage = minetest.get_mod_storage()
 
----------------------
---SINGLENODE
-minetest.set_mapgen_params({mgname = "singlenode", flags = "nolight"})
-
---Despite being the up to date method this doesn't work
---minetest.set_mapgen_setting("mgname", "singlenode", true)
---minetest.set_mapgen_setting("flags", "nolight", true)
-
 
 
 -----------------
@@ -25,7 +17,7 @@ minetest.set_mapgen_params({mgname = "singlenode", flags = "nolight"})
 dofile(minetest.get_modpath("mg_tectonic").."/trees.lua")
 dofile(minetest.get_modpath("mg_tectonic").."/plants_api.lua")
 dofile(minetest.get_modpath("mg_tectonic").."/plants.lua")
---may cause bugs????
+--may cause bugs when used???? -- this is an experiment for adding custom plants
 if minetest.get_modpath("mgt_flora") ~= nil then
 	dofile(minetest.get_modpath("mgt_flora").."/plants_reg.lua")
 end
@@ -47,7 +39,7 @@ end
 local YMAX = 31000
 local YMIN = -31000
 
- --sealevel
+--sealevel
 local SEA = 0
 
 --height of lava
@@ -230,7 +222,7 @@ mgtec.climate = function(x, z, y, n_terr, n_terr2)
 	-- no Fohn? Westies are controlled by z only
 	local temp_x = 0
 
-  local lon_blend = (blend*3) + n_terr * 200 --offset east-west border with some noise
+	local lon_blend = (blend*3) + n_terr * 200 --offset east-west border with some noise
 
 	-- Easterners?
 	if x > lon_blend then
@@ -260,7 +252,7 @@ mgtec.climate = function(x, z, y, n_terr, n_terr2)
 	--if in doubt ...
 	local hum = 50
 
-	----poitive, east coast. Dry inland
+	----positive, east coast. Dry inland
 	--linear increase,
 	if x > lon_blend then
 		hum = (0.00194*x) + blend
@@ -367,9 +359,53 @@ mgtec.climate = function(x, z, y, n_terr, n_terr2)
 	end
 
 
-return temp, hum, distu
+	return temp, hum, distu
 --done climate calculations
 end
+--============================================================================================================ --***
+----ON--------------------------------------------------------------------
+logg = function(sss) --for debug
+	minetest.log(sss)
+	--minetest.chat_send_all(sss)  --Causes silent crash if called to soon
+	minetest.after(0 , minetest.chat_send_all , sss) --delay until global step loop
+end
+----OFF-------------------------------------------------------------------
+--logg = function(sss) end
+--------------------------------------------------------------------------
+--========== OVERRIDE minetest.get_heat(pos) , minetest.get_humidity(pos) ============================================== --***
+
+--Some mod could query heat/hum too frequently, return cached data to save CPU if pos "enough" near to last calculated pos.
+--(heat and humidity vary smoothly)
+-- h_th (horizontal) and v_th(vertical) are the threshold distances that decide wether return cached or recalculate
+-- Different h_th and v_th due to heat, hum being more altitude dependent than x,z dependent
+-- This naive cache system is only good for singleplayer.Multiplayer would need kind of per player cache.
+-- (Cached pos of player 1 is useless if player 2 queries hum/heat)
+
+local clima_cache = {50, 50, x=100000, y=0, z=0 }
+local v_th = 15 --PLEASE ADJUST THIS VALUE!
+local h_th = 30 --PLEASE ADJUST THIS VALUE!
+local h_th2 = h_th^2
+local get_heat_or_humidity = function(pos,what)
+	if math.abs(pos.y - clima_cache.y) > v_th
+	or (pos.x - clima_cache.x)^2 + (pos.z - clima_cache.z)^2 > h_th2
+	then
+		local temp, hum, distu = mgtec.climate(pos.x, pos.z, pos.y) -- , n_terr, n_terr2)
+		clima_cache.x = pos.x
+		clima_cache.y = pos.y
+		clima_cache.z = pos.z
+		clima_cache[1] = temp
+		clima_cache[2] = hum
+		--logg("get_heat_or_humidity -> recalculated T,H = ".. temp .." , ".. hum)
+	else
+		--logg("get_heat_or_humidity -> cached T,H = ".. clima_cache[1] .." , ".. clima_cache[2])
+	end
+	return clima_cache[what]
+end
+
+minetest.get_heat     = function(pos) return get_heat_or_humidity(pos,1) end
+minetest.get_humidity = function(pos) return get_heat_or_humidity(pos,2) end
+
+--======================================================================================================================
 
 -------------------------------------
 --Create Swamp
@@ -413,17 +449,19 @@ local c_coralo = minetest.get_content_id("default:coral_orange")
 
 --sediments
 local SEDID = {
- 			c_gravel = minetest.get_content_id("default:gravel"),
- 			c_clay = minetest.get_content_id("default:clay"),
- 			c_sand = minetest.get_content_id("default:sand"),
- 			c_sand2 = minetest.get_content_id("default:silver_sand"),
- 			c_dirt = minetest.get_content_id("default:dirt"),
-			c_perma = minetest.get_content_id("default:permafrost"),
+		c_gravel = minetest.get_content_id("default:gravel"),
+		c_clay = minetest.get_content_id("default:clay"),
+		c_sand = minetest.get_content_id("default:sand"),
+		c_sand2 = minetest.get_content_id("default:silver_sand"),
+		c_dirt = minetest.get_content_id("default:dirt"),
+		c_dry_dirt = minetest.get_content_id("default:dry_dirt"),
+		c_perma = minetest.get_content_id("default:permafrost"),
 }
 
 --surfaces
 local c_dirtgr = minetest.get_content_id("default:dirt_with_grass")
 local c_dirtdgr = minetest.get_content_id("default:dirt_with_dry_grass")
+local c_dry_dirtdgr = minetest.get_content_id("default:dry_dirt_with_dry_grass")
 local c_dirtsno = minetest.get_content_id("default:dirt_with_snow")
 local c_dirtlit = minetest.get_content_id("default:dirt_with_rainforest_litter")
 local c_dirtconlit = minetest.get_content_id("default:dirt_with_coniferous_litter")
@@ -470,53 +508,53 @@ local OREID = {
 -- 2D Mountain Terrain.
 --controls: large rounded mountains.
 local np_terrain = {
-   offset = 0,
-   scale = 1,
-   spread = {x = 1944, y = 3078, z = 1944},
-   seed = 110013,
-   octaves = 5,
-   persist = 0.3,
-   lacunarity = 3,
-	 --flags = 'noeased',
+	offset = 0,
+	scale = 1,
+	spread = {x = 1944, y = 3078, z = 1944},
+	seed = 110013,
+	octaves = 5,
+	persist = 0.3,
+	lacunarity = 3,
+	--flags = 'noeased',
 }
 
 -- 2D Soft rock Terrain.
 --controls: sharp peaks
 local np_terrain2 = {
-   offset = 0,
-   scale = 1,
-   spread = {x = 405, y = 243, z = 405},
-   seed = 5938033,
-   octaves = 3,
-   persist = 0.6,
-   lacunarity = 3,
-	 flags = 'noeased',
+	offset = 0,
+	scale = 1,
+	spread = {x = 405, y = 243, z = 405},
+	seed = 5938033,
+	octaves = 3,
+	persist = 0.6,
+	lacunarity = 3,
+	flags = 'noeased',
 }
 
 
 -- 3D Caves 1
 --used by: fissures in basement rock,
 local np_cave = {
-   offset = 0,
-   scale = 1,
-   spread = {x = 108, y = 243, z = 324},
-   seed = -9103323,
-   octaves = 3,
-   persist = 0.2,
-   lacunarity = 3,
-	 --flags = 'noeased',
+	offset = 0,
+	scale = 1,
+	spread = {x = 108, y = 243, z = 324},
+	seed = -9103323,
+	octaves = 3,
+	persist = 0.2,
+	lacunarity = 3,
+	--flags = 'noeased',
 }
 
 -- 3D Caves 2
 --used by: breaks in fissures, caves in basement rock
 local np_cave2 = {
-  offset = 0,
+	offset = 0,
 	scale = 1,
 	spread = {x = 81, y = 27, z = 81},
 	seed = 205301,
 	octaves = 3,
 	persist = 0.5,
-  lacunarity = 3,
+	lacunarity = 3,
 	flags = 'noeased',
 }
 
@@ -524,13 +562,13 @@ local np_cave2 = {
 --3D Strata
 -- used by: ore thresholds.
 local np_strata = {
-   offset = 0,
-   scale = 1,
-   spread = {x = 81, y = 81, z = 81},
-   seed = 51055033,
-   octaves = 3,
-   persist = 0.7, --high or get few ore
-   lacunarity = 3,
+	offset = 0,
+	scale = 1,
+	spread = {x = 81, y = 81, z = 81},
+	seed = 51055033,
+	octaves = 3,
+	persist = 0.7, --high or get few ore
+	lacunarity = 3,
 }
 
 
@@ -574,8 +612,11 @@ local spawnpoint = {x = 0, z = 0}
 minetest.register_on_mapgen_init(function(mapgen_params)
 
 
+	minetest.log("on_mapgen_init ") --MIO
 	math.randomseed(mapgen_params.seed)
-  spawnpoint = {x = math.random(-23000, 23000), z = math.random(-27000, 27000)}
+	spawnpoint = {x = math.random(-23000, 23000), z = math.random(-27000, 27000)}
+	minetest.set_mapgen_setting("mg_name", "singlenode", true) --***
+	minetest.set_mapgen_setting("mg_flags", "nolight", true) --***
 
 
 	-- some things need to be random, but stay constant throughout the loop
@@ -593,7 +634,7 @@ minetest.register_on_mapgen_init(function(mapgen_params)
 				lakes[i] = {x = math.random(-13000,-5500), z = math.random(-25000,25000), r = math.random(1,5)}
 			else
 				--East lake.
-				lakes[i] = {x = math.random(13000,5500), z = math.random(-25000,25000), r = math.random(1,4)}
+				lakes[i] = {x = math.random(5500,13000), z = math.random(-25000,25000), r = math.random(1,4)}
 			end
 			--save location for bug checking
 			mod_storage:set_int("Lake"..i.."x", lakes[i].x)
@@ -604,11 +645,11 @@ minetest.register_on_mapgen_init(function(mapgen_params)
 end)
 
 table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
-  math.randomseed(seed)
+	math.randomseed(seed)
 	--------------------------------
 	--don't do out of bounds!
 	--world is a square, ymin will do for z and x too.
-  if minp.x < YMIN
+	if minp.x < YMIN
 	or maxp.x > YMAX
 	or minp.y < YMIN
 	or maxp.y > YMAX
@@ -665,6 +706,9 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 	-- Load the voxelmanip with the result of engine mapgen. Since 'singlenode'
 	-- mapgen is used this will be a mapchunk of air nodes.
 	local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
+    --minetest.log("+++++++++ on_generated called with seed = " .. seed .. " minp= " .. minetest.pos_to_string(minp)  .. " maxp= " .. minetest.pos_to_string(maxp) .. " emin= " .. minetest.pos_to_string(emin) .. " emax= " .. minetest.pos_to_string(emax)) --MIO
+    --minetest.log("+++++++++ on_generated called with seed = " .. seed .. "," .. minetest.pos_to_string(minp)  .. "," .. minetest.pos_to_string(maxp) .. "," .. minetest.pos_to_string(emin) .. "," .. minetest.pos_to_string(emax)) --MIO
+
 
 	-- 'area' is used later to get the voxelmanip indexes for positions.
 	local area = VoxelArea:new{MinEdge = emin, MaxEdge = emax}
@@ -721,20 +765,32 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				-----------
 				-- Math
 
+				--[[note on noise:
+				Without noise the waves form straight lines down the entire map.
+				This is only noticeable after much exploring,
+				 but makes the map less interesting.
+				Noise added to make waves more varied along the map.
+				- xab: changes the centre of symmetry. Means ranges aren't straight lines.
+				-whs: creates high and low points (must be small or crazy effects!).
+				-xroll: number and size of ranges.
+				-mup: low and high points
+				]]
+
+
 				--absolute for x (for symmetry on both sides of map)
-				local xab = math.abs(x)
+				local xab = math.abs(x + (n_terr * -843))
 				--x axis terrain gradient. 0 at centre. 1 at edges.
 				--Used by equations to adjust along x axis
 				local xtgrad = (xab/YMAX)
 
 				--amplitude... going from 1 to zero at map edge
-				local whs = 1-xtgrad
+				local whs = (1-xtgrad) + (ab_t2 * -0.05)
 
 
 				--Move up/down along x axis. Goes from +1 to -1
-        --mup raises and lowers along x axis. the two terms cancel out in middle of x range (15k).
-        --aimed for equations that need to lift map centre, sink edges
-        local mup = whs + (-1 * xtgrad)
+				--mup raises and lowers along x axis. the two terms cancel out in middle of x range (15k).
+				--aimed for equations that need to lift map centre, sink edges
+				local mup = whs + (-1 * xtgrad) + (n_terr * -0.4)
 
 
 				------------------
@@ -744,7 +800,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 				--Wave period. "Roll". i.e. how wide/steep and they are.
 				--Gradient widens the ranges towards the edges.
-				local x_roll = XRS + (XRS * xtgrad)   --x axis
+				local x_roll = XRS + (XRS * xtgrad)  + (1686 - (ab_t * 1686))
 
 				--The Wave!
 				local xwav = (whs*math.cos(x/x_roll))    -- north south wave (main ranges)
@@ -917,8 +973,8 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					if not basin and not river_basin then
 						for n = 0, num_lakes do
 							local laked = -25 + (10 * n_terr2)
-		    			local laker = (160 + (100 * n_terr) + (25 * n_terr2)) * (1 + (y/(160 + (20 * n_terr))))
-		    			if x < lakes[n].x + (laker*1.6) and x > lakes[n].x - (laker*1.6)
+							local laker = (160 + (100 * n_terr) + (25 * n_terr2)) * (1 + (y/(160 + (20 * n_terr))))
+							if x < lakes[n].x + (laker*1.6) and x > lakes[n].x - (laker*1.6)
 							and z < lakes[n].z + laker and z > lakes[n].z - laker
 							and y > laked then
 								river_basin = true
@@ -1309,9 +1365,13 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 												void = false
 											end
 										-- Nonpolar arid
-										elseif hum < 20 then
+										elseif hum < 15 then
 											--sand dunes...?
 											data[vi] = c_dsand
+											void = false
+										elseif hum < 30 then
+											--more moisture no more sand, dry dirt
+											data[vi] = SEDID.c_dry_dirt
 											void = false
 										--wasn't one of the weirdos. Must be dirt.
 										else
@@ -1548,6 +1608,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 					or nodu == c_dsand
 					or nodu == SEDID.c_sand
 					or nodu == SEDID.c_dirt
+					or nodu == SEDID.c_dry_dirt
 					or nodu == SEDID.c_perma
 					or nodu == c_sandstone
 					or nodu == c_sandstone2
@@ -1778,13 +1839,13 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 									data[vi] = SEDID.c_gravel
 									void = false
 								--cold and dry
-							  elseif temp < 30 then
+								elseif temp < 30 then
 									--very dry places are cold desert
 									if hum < 7 then
 										data[vi] = SEDID.c_sand2
 										void = false
 									-- wet enough for soil, still too dry to snow
-								  elseif hum < 14 then
+									elseif hum < 14 then
 										data[vi] = c_dirtdgr
 										void = false
 									--more water and it snows
@@ -1801,11 +1862,11 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 								else
 									-- more moisture have soil
 									if hum > 6 then
-										data[vi] = c_dirtdgr
+										data[vi] = c_dry_dirtdgr
 										void = false
 									--very dry (or if in doubt) are gravel
 									else
-										--data[vi] = OREID.c_mese
+										--data[vi] = OREID.c_mese --for bug testing!
 										data[vi] = SEDID.c_gravel
 										void = false
 									end
@@ -1829,11 +1890,14 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 							--All the rest must be grasslands
 						else
 							--dry...
-							if hum < 40 or temp >90 then
+							if hum < 20 or temp >95 then
+								data[vi] = c_dry_dirtdgr
+								void = false
+							elseif hum < 40 or temp >90 then
 								data[vi] = c_dirtdgr
 								void = false
 							--cold
-						  elseif temp < 30 then
+							elseif temp < 30 then
 								data[vi] = c_dirtsno
 								void = false
 								--warm and wet
@@ -1897,82 +1961,86 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 	nixz = 1
 
 	for z = minp.z, maxp.z do
-	 for y = minp.y, maxp.y do
-		 -- Voxelmanip index for the flat array of content IDs.
-		 -- Initialise to first node in this x row.
-		 local vi = area:index(minp.x, y, z)
-		 for x = minp.x, maxp.x do
+		for y = minp.y, maxp.y do
+			-- Voxelmanip index for the flat array of content IDs.
+			-- Initialise to first node in this x row.
+			local vi = area:index(minp.x, y, z)
+			for x = minp.x, maxp.x do
 
-			 ---------------------------------
-			 if y > SEA then
+				 ---------------------------------
+				if y > SEA then
 
-				 --we only go ahead if it's empty
-				 if data[vi] == MISCID.c_air then
+					--we only go ahead if it's empty
+					if data[vi] == MISCID.c_air then
 
-					 --Substrate, all plants should check it themselves...
-					 -- so no need to check here
-					 local nodu  = data[(vi - ystridevm)]
+						--Substrate, all plants should check it themselves...
+						-- so no need to check here
+						local nodu  = data[(vi - ystridevm)]
 
-					 --We need these again
-					 local n_terr  = nvals_terrain[nixz]
-					 local n_terr2  = nvals_terrain[nixz]
+						--We need these again
+						local n_terr  = nvals_terrain[nixz]
+						local n_terr2  = nvals_terrain[nixz]
 
-					 --get climate data
-					 local temp
-					 local hum
-					 local distu
-					 temp, hum, distu = mgtec.climate(x, z, y, n_terr, n_terr2)
+						--get climate data
+						local temp
+						local hum
+						local distu
+						temp, hum, distu = mgtec.climate(x, z, y, n_terr, n_terr2)
 
-					 -- pack it in a table, for plants API
-					 local conditions = {
-															 temp = temp,
-															 humidity = hum,
-															 disturb = distu,
-															 nodu = nodu
-															 }
-					 local pos = {x = x, y = y, z = z}
-					 --call the api... this will create plant
-					 mgtec.choose_generate_plant(vm, conditions, pos, data, data2, area, vi)
+						-- pack it in a table, for plants API
+						local conditions = {
+							temp = temp,
+							humidity = hum,
+							disturb = distu,
+							nodu = nodu
+							}
+						local pos = {x = x, y = y, z = z}
+						--call the api... this will create plant
+						mgtec.choose_generate_plant(vm, conditions, pos, data, data2, area, vi)
 
-					 --do snow pack over everything
-					if data[vi] == MISCID.c_air
-					and nodu ~= MISCID.c_ignore
-					and nodu ~= MISCID.c_air
-					and hum > 15
-					and temp < 30
-					and nodu ~= c_snow
-					and y >= SEA + 2 then
-						local name = minetest.get_name_from_content_id(nodu)
+						--do snow pack over everything
+						if data[vi] == MISCID.c_air
+						and nodu ~= MISCID.c_ignore
+						and nodu ~= MISCID.c_air
+						and hum > 15
+						and temp < 30
+						and nodu ~= c_snow
+						and y >= SEA + 2 then
+							local name = minetest.get_name_from_content_id(nodu)
 
-						if not minetest.registered_nodes[name] then
-							return nil
+							if not minetest.registered_nodes[name] then
+								minetest.log("********* Second loop: minetest.registered_nodes[name] is nil   name = "..dump(name).." *************")  --***
+								return nil --***  ???
+							end
+							local draw = minetest.registered_nodes[name]['drawtype']
+
+							if draw == 'normal'
+							or draw == 'allfaces_optional'  then
+								data[vi] = c_snow
+								--void = false --***
+								--this causes WARNING[Emerge-0]: Assignment to undeclared global "void" inside a function at ...  --***
+								--void is declared local to the first loop --***
+								--and seems unused here ?  --***
+							end
 						end
-						local draw = minetest.registered_nodes[name]['drawtype']
 
-						if draw == 'normal'
-						or draw == 'allfaces_optional'  then
-							data[vi] = c_snow
-						 void = false
-					 end
-				 end
-
-				 --done with void areas.
-				 end
-			 --end of not underwater stuff.
-			 end
+					--done with void areas.
+					end
+				--end of not underwater stuff.
+				end
 
 
-			 ---------------------------
-			 --Final Housekeeping
-			 -- Increment noise index.
-			nixz = nixz + 1
-			 -- Increment voxelmanip index along x row.
-			vi = vi + 1
+				---------------------------
+				--Final Housekeeping
+				-- Increment noise index.
+				nixz = nixz + 1
+				-- Increment voxelmanip index along x row.
+				vi = vi + 1
+			end
+			nixz = nixz - sidelen
 		end
-		nixz = nixz - sidelen
+		nixz = nixz + sidelen
 	end
-	nixz = nixz + sidelen
-end
 	--we have left loop 2...probably isn't the quickest solution, but it works.
 
 
@@ -2009,41 +2077,42 @@ end))
 
 --spawnpoints = {} -- We don't want them respawning somewhere else! (That could be interesting, though.)
 
+--[=[ ================ THE OLD spawnplayer & get_far_node FUNCTIONS ==================================================== --***
+
 local function get_far_node(pos, player,alt)
 	local node = minetest.get_node(pos)
 	if node.name == "ignore" then
-	    minetest.emerge_area(pos, pos)
-			minetest.after(2,function()
-	        spawnplayer(player, alt)
-	    end)
-	    return node, false
+		minetest.emerge_area(pos, pos)
+		minetest.after(2,function()
+			spawnplayer(player, alt)
+		end)
+		return node, false
 	end
 	return node, true
 end
 
-
 function spawnplayer(player,alt)
-    local pos = spawnpoint
+	local pos = spawnpoint
 
 
-		--an attempt to reduce time...puts player underground :-(
-		--local xtgr_spawn = 1-(math.abs(pos.x)/YMAX)
-		--alt = math.floor(alt * xtgr_spawn)
+	--an attempt to reduce time...puts player underground :-(
+	--local xtgr_spawn = 1-(math.abs(pos.x)/YMAX)
+	--alt = math.floor(alt * xtgr_spawn)
 
-    for i = alt, 0,-1 do
-				alt = i
-        pos.y = i
-				minetest.chat_send_player(player:get_player_name(), "Please wait. The spawning code is looking for the ground. Spawning at... x:"..pos.x.." z:"..pos.z .." y:"..pos.y)
-        local node, val = get_far_node(pos, player, alt)
-        if not val then
-						pos.y = pos.y + 1000
-						player:setpos(pos)
-            break
-        end
-        if node.name ~= "air" then
-					break
-        end
-    end
+	for i = alt, 0,-1 do
+		alt = i
+		pos.y = i
+		minetest.chat_send_player(player:get_player_name(), "Please wait. The spawning code is looking for the ground. Spawning at... x:"..pos.x.." z:"..pos.z .." y:"..pos.y)
+		local node, val = get_far_node(pos, player, alt)
+		if not val then
+			pos.y = pos.y + 1000
+			player:setpos(pos)
+			break
+		end
+		if node.name ~= "air" then
+			break
+		end
+	end
 
 	pos.y = pos.y + 2
 	player:setpos(pos)
@@ -2054,8 +2123,177 @@ function spawnplayer(player,alt)
 	mod_storage:set_int("z", pos.z)
 
 end
+--]=]
 
+--===================== THE NEW spawnplayer FUNCTIONS ======================================================================= --***
 
+local ALT_START = 2600 --Starting height to begin searching ground downwards
+-- Used in register_on_newplayer and xteleport chatcommand
+
+local find_ground_level_at = function(x,z , alt_max, alt_min, step)
+	--Based on den_base , t_base or den_soft, t_base or den_allu , t_base or den_sedi > t_base
+	--and  basin , river_basin
+	--Does not account for "toppings": snow, ice...
+	local t0 = minetest.get_us_time()   -- os.clock()
+	local step = step or -1  -- step optional, default -1
+	-----------------------------------------------------------------------
+	local noi_cave   = minetest.get_perlin(np_cave)
+	local noi_cave2  = minetest.get_perlin(np_cave2)
+	local noi_strata = minetest.get_perlin(np_strata)
+	----------------------------------------------------------------------
+	local n_terr   = minetest.get_perlin(np_terrain):get_2d({x=x,y=z})
+	local n_terr2  = minetest.get_perlin(np_terrain2):get_2d({x=x,y=z})
+	----------------------------------------------------------------------
+	local xab = math.abs(x + (n_terr * -843))
+	local xtgrad = (xab/YMAX)
+	local whs = (1-xtgrad) + (math.abs(n_terr2) * -0.05)
+	local mup =  whs + (-1 * xtgrad) + (n_terr * -0.4)
+	local x_roll = XRS + (XRS * xtgrad)  + (1686 - (math.abs(n_terr) * 1686))
+	local dwav = ((whs*math.cos(x/(x_roll/6.89))) ^ 3)*1.67 + ((whs*math.cos(x/x_roll)) ^ 3)*6.89 + mup*10.81
+	--local dnoi = (n_terr^3 + n_terr*0.5 + n_terr2*n_terr*0.8) * 2.8 * (whs + 0.02)
+	local dnoi = 2.8 * n_terr * (0.5 + n_terr^2 + n_terr2*0.8) * (whs + 0.02)
+	local pos = {x=x,z=z}   -- y set in the loop
+	---------------------------------------------------
+	local basin
+	local river_basin
+	local shelfnoi
+	local shelfsl
+	local laked = -25 + 10 * n_terr2
+	local zab = math.abs(z)
+	local shelfnoi_xz = (n_terr^3 + n_terr2*0.08) * CONOI
+	local laker_0 = 160 + 100*n_terr + 25*n_terr2
+	local laker_1 = laker_0/(160 + 20*n_terr)
+	local wp = 8 + 0.0003*xab
+	local w_0 = wp - 3*n_terr2^3
+	local w_1 = wp/(8 + 2*n_terr)
+	local per_ch = (3.5*n_terr + 22) * wp --period of channel
+	local interr2 = 1-n_terr2
+	local am_ch = (interr2 + 4.6) * wp --amplitude
+	local c1 = am_ch*math.sin(x/per_ch) --wave for channel
+	local c2 = (12 + 3*interr2)*math.sin(x/(56 + 8*n_terr))
+	local channel = c1 + c2
+	---------------------------------------------------
+	for y = alt_max, alt_min, step do
+		pos.y = y
+		local val_cave   = noi_cave:get_3d(pos)
+		local val_cave2  = noi_cave2:get_3d(pos)
+		local val_strata = noi_strata:get_3d(pos)
+		local dclif2 = math.abs(val_cave*val_cave2*0.05)
+		local den_base = dwav + dnoi - math.abs(val_strata)*0.16 - dclif2
+		local den_soft = den_base*0.4  + 1.3 + (1-n_terr) * (2.22 - xtgrad*2) - dclif2
+		local den_allu = den_soft*0.95 + 0.1 - dclif2  --Alluvium --eroded rock etc, deposited on lowlands
+		local den_sedi = den_allu      + 0.03 --Sediment--subsurface soils and sands
+		local t_base = 0.00969*y --Base Threshold (use for all of them now) effects heights of landscape
+		if den_base > t_base
+		or den_soft > t_base
+		or den_allu > t_base
+		or den_sedi > t_base then
+			river_basin = false		--river basin
+			shelfnoi = shelfnoi_xz - dclif2
+			shelfsl = (3 - n_terr^3)*y --sets slope for x
+			if y >= SEABED
+			and (xab > (SHELFX + shelfnoi*2 - shelfsl) --Are we in the right place for oceans?
+			or   zab > (SHELFZ + shelfnoi   - shelfsl)) then
+				basin = true
+			else
+				basin = false
+				local laker = laker_0 + laker_1*y
+				local w = w_0 + w_1*y
+				for n = 0, num_lakes do
+					if  math.abs(x - lakes[n].x) < laker*1.6
+					and math.abs(z - lakes[n].z) < laker
+					and y > laked then
+						river_basin = true
+					end
+					if lakes[n].r <= 4 then
+						if  z <= lakes[n].z + channel + w
+						and z >= lakes[n].z + channel - w then
+							if lakes[n].x > 0 and x + w > lakes[n].x then
+								river_basin = true
+							elseif lakes[n].x < 0 and x - w < lakes[n].x then  --west lakes, only place river further west
+								river_basin = true
+							end
+						end
+					end
+				end
+			end
+			if not basin and not river_basin then
+				logg("+++++++++++ find_ground_level_at ".. x ..",".. z .." -> y= " .. y .." took " .. math.ceil((minetest.get_us_time()-t0)/1000) .. " miliseconds")
+				--string.format("elapsed time: %.5f\n", os.clock() - x)
+				return y
+			end
+		end
+	end
+	logg("+++++++++++ find_ground_level_at ".. x ..",".. z .." -> reached alt_min " .. alt_min .." took " .. math.ceil((minetest.get_us_time()-t0)/1000) .. " miliseconds")
+	return alt_min
+end
+
+local spawnplayer = function(player,alt_max)
+	local pos = spawnpoint
+	pos.y = 2 + find_ground_level_at(pos.x,pos.z, alt_max, 0) --(x, z, alt_max, alt_min)
+	player:setpos(pos)
+
+	--save location
+	mod_storage:set_int("x", pos.x)
+	mod_storage:set_int("y", pos.y)
+	mod_storage:set_int("z", pos.z)
+end
+
+--Based on minetest-5.0.1-win32/builtin/game/chatcommands.lua
+minetest.register_chatcommand("xteleport", {
+	params = "<X>,<Z>",
+	description = "Teleport to position X,Z at ground level",
+	privs = {teleport=true},
+	func = function(name, param)
+		-- Returns (pos, true) if found, otherwise (pos, false)
+		--[[
+		local function find_free_position_near(pos)
+			local tries = {
+				{x=1,y=0,z=0},
+				{x=-1,y=0,z=0},
+				{x=0,y=0,z=1},
+				{x=0,y=0,z=-1},
+			}
+			for _, d in ipairs(tries) do
+				local p = {x = pos.x+d.x, y = pos.y+d.y, z = pos.z+d.z}
+				local n = minetest.get_node_or_nil(p)
+				if n and n.name then
+					local def = minetest.registered_nodes[n.name]
+					if def and not def.walkable then
+						return p, true
+					end
+				end
+			end
+			return pos, false
+		end
+		--]]------------------------------------------------
+		local teleportee = nil
+		local p = {}
+		--p.x, p.y, p.z = string.match(param, "^([%d.-]+)[, ] *([%d.-]+)[, ] *([%d.-]+)$")
+		p.x, p.z = string.match(param, "^([%d.-]+)[, ] *([%d.-]+)$")
+		p.x = tonumber(p.x)
+		p.z = tonumber(p.z)
+		if p.x and p.z then
+			if p.x < YMIN or p.x > YMAX or p.z < YMIN or p.z > YMAX then
+				return false, "Cannot teleport out of map bounds!"
+			end
+			teleportee = minetest.get_player_by_name(name)
+			if teleportee then
+				local survival = minetest.settings:get_bool("enable_damage")
+				--local alt_min = SEABED  --0
+				local alt_min = survival and 0 or SEABED
+				logg("Survival: " .. dump(survival) .. " alt_min = " .. alt_min )
+				p.y = 2 + find_ground_level_at(p.x,p.z,ALT_START,alt_min)
+				teleportee:set_pos(p)
+				minetest.log("action", "Xteleporting " .. name .. " to " .. minetest.pos_to_string(p))
+				return true, "Teleporting to ".. minetest.pos_to_string(p)
+			end
+		else
+			return false, 'Invalid parameters ("' .. param .. '") , expected params <X>,<Z>'
+		end
+	end,
+})
+--======================= END OF NEW FUNCTIONS =====================================================================================
 
 function savedspawn(player)
 	--get location from storage
@@ -2071,8 +2309,7 @@ end
 
 -----------------------------------------------------------
 minetest.register_on_newplayer(function(player)
-
-	spawnplayer(player,2600)
+	spawnplayer(player,ALT_START)
 
 
 	-- Get the inventory of the player
@@ -2085,7 +2322,7 @@ minetest.register_on_newplayer(function(player)
 	--inventory:add_item("main", "default:ladder 10")
 	inventory:add_item("main", "farming:bread 7")
 	inventory:add_item("main", "farming:seed_wheat 4")
-  inventory:add_item("main", "farming:seed_cotton 4")
+	inventory:add_item("main", "farming:seed_cotton 4")
 	inventory:add_item("main", "default:sapling")
 end)
 
@@ -2127,14 +2364,14 @@ minetest.register_on_joinplayer(init_cloud)
 --[[
 local enviro_meter = function(user, pointed_thing)
 
-  local name =user:get_player_name()
-  local pos = user:getpos()
+	local name =user:get_player_name()
+	local pos = user:getpos()
 
 	minetest.chat_send_player(name, minetest.colorize("#00ff00", "ENVIRONMENT MEASUREMENT:"))
 
-  local t,h,d = mgtec.climate(pos.x, pos.z, pos.y)
+	local t,h,d = mgtec.climate(pos.x, pos.z, pos.y)
 
-  minetest.chat_send_player(name, minetest.colorize("#cc6600","TEMPERATURE INDEX LEVEL = "..t))
+	minetest.chat_send_player(name, minetest.colorize("#cc6600","TEMPERATURE INDEX LEVEL = "..t))
 	minetest.chat_send_player(name, minetest.colorize("#cc6600","HUMIDITY INDEX LEVEL = "..h))
 	minetest.chat_send_player(name, minetest.colorize("#cc6600","DISTURBANCE INDEX LEVEL = "..d))
 
@@ -2151,4 +2388,4 @@ minetest.register_craftitem("mg_tectonic:enviro_meter", {
 		enviro_meter(user, pointed_thing)
 	end,
 })
-]]
+--]]
