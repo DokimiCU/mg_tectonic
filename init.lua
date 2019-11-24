@@ -212,6 +212,10 @@ mgtec.climate = function(x, z, y, n_terr, n_terr2)
 		n_terr2 = 0
 	end
 
+	--adjust x to match with the adjusted centreline of symmetry
+	local x_adj = (n_terr * 1466)
+	x = x + x_adj
+
 
 	--We are Southern Hemisphererers here!
 	--decreasing temp from max z to min z (latitude) (from 100 to 0 i.e north desert to south ice)
@@ -222,7 +226,9 @@ mgtec.climate = function(x, z, y, n_terr, n_terr2)
 	-- no Fohn? Westies are controlled by z only
 	local temp_x = 0
 
-	local lon_blend = (blend*3) + n_terr * 200 --offset east-west border with some noise
+	--offset east-west border with some noise
+	-- centreline from noise with more noise
+	local lon_blend = x_adj + ((blend*3) - (n_terr2 * 200))
 
 	-- Easterners?
 	if x > lon_blend then
@@ -362,50 +368,7 @@ mgtec.climate = function(x, z, y, n_terr, n_terr2)
 	return temp, hum, distu
 --done climate calculations
 end
---============================================================================================================ --***
-----ON--------------------------------------------------------------------
-logg = function(sss) --for debug
-	minetest.log(sss)
-	--minetest.chat_send_all(sss)  --Causes silent crash if called to soon
-	minetest.after(0 , minetest.chat_send_all , sss) --delay until global step loop
-end
-----OFF-------------------------------------------------------------------
---logg = function(sss) end
---------------------------------------------------------------------------
---========== OVERRIDE minetest.get_heat(pos) , minetest.get_humidity(pos) ============================================== --***
 
---Some mod could query heat/hum too frequently, return cached data to save CPU if pos "enough" near to last calculated pos.
---(heat and humidity vary smoothly)
--- h_th (horizontal) and v_th(vertical) are the threshold distances that decide wether return cached or recalculate
--- Different h_th and v_th due to heat, hum being more altitude dependent than x,z dependent
--- This naive cache system is only good for singleplayer.Multiplayer would need kind of per player cache.
--- (Cached pos of player 1 is useless if player 2 queries hum/heat)
-
-local clima_cache = {50, 50, x=100000, y=0, z=0 }
-local v_th = 15 --PLEASE ADJUST THIS VALUE!
-local h_th = 30 --PLEASE ADJUST THIS VALUE!
-local h_th2 = h_th^2
-local get_heat_or_humidity = function(pos,what)
-	if math.abs(pos.y - clima_cache.y) > v_th
-	or (pos.x - clima_cache.x)^2 + (pos.z - clima_cache.z)^2 > h_th2
-	then
-		local temp, hum, distu = mgtec.climate(pos.x, pos.z, pos.y) -- , n_terr, n_terr2)
-		clima_cache.x = pos.x
-		clima_cache.y = pos.y
-		clima_cache.z = pos.z
-		clima_cache[1] = temp
-		clima_cache[2] = hum
-		--logg("get_heat_or_humidity -> recalculated T,H = ".. temp .." , ".. hum)
-	else
-		--logg("get_heat_or_humidity -> cached T,H = ".. clima_cache[1] .." , ".. clima_cache[2])
-	end
-	return clima_cache[what]
-end
-
-minetest.get_heat     = function(pos) return get_heat_or_humidity(pos,1) end
-minetest.get_humidity = function(pos) return get_heat_or_humidity(pos,2) end
-
---======================================================================================================================
 
 -------------------------------------
 --Create Swamp
@@ -573,8 +536,7 @@ local np_strata = {
 
 
 
-
----============================================================================
+--======================================================================================================================
 --NOISE MEMORY
 
 -- Initialize noise object to nil. It will be created once only during the
@@ -601,6 +563,53 @@ local nvals_strata = {}
 local data = {}
 -- param2 data
 local data2 = {}
+
+
+--============================================================================================================ --***
+----ON--------------------------------------------------------------------
+logg = function(sss) --for debug
+	minetest.log(sss)
+	--minetest.chat_send_all(sss)  --Causes silent crash if called to soon
+	minetest.after(0 , minetest.chat_send_all , sss) --delay until global step loop
+end
+----OFF-------------------------------------------------------------------
+--logg = function(sss) end
+--------------------------------------------------------------------------
+--========== OVERRIDE minetest.get_heat(pos) , minetest.get_humidity(pos) ============================================== --***
+
+--Some mod could query heat/hum too frequently, return cached data to save CPU if pos "enough" near to last calculated pos.
+--(heat and humidity vary smoothly)
+-- h_th (horizontal) and v_th(vertical) are the threshold distances that decide wether return cached or recalculate
+-- Different h_th and v_th due to heat, hum being more altitude dependent than x,z dependent
+-- This naive cache system is only good for singleplayer.Multiplayer would need kind of per player cache.
+-- (Cached pos of player 1 is useless if player 2 queries hum/heat)
+
+local clima_cache = {50, 50, x=100000, y=0, z=0 }
+local v_th = 15 --PLEASE ADJUST THIS VALUE!
+local h_th = 30 --PLEASE ADJUST THIS VALUE!
+local h_th2 = h_th^2
+local get_heat_or_humidity = function(pos,what)
+	if math.abs(pos.y - clima_cache.y) > v_th
+	or (pos.x - clima_cache.x)^2 + (pos.z - clima_cache.z)^2 > h_th2
+	then
+		--local n_terr  = nvals_terrain[nixz] ---doesn't actually give it noise?
+		--local n_terr2  = nvals_terrain2[nixz]
+		local temp, hum, distu = mgtec.climate(pos.x, pos.z, pos.y)--, n_terr, n_terr2)
+		clima_cache.x = pos.x
+		clima_cache.y = pos.y
+		clima_cache.z = pos.z
+		clima_cache[1] = temp
+		clima_cache[2] = hum
+		logg("get_heat_or_humidity -> recalculated T,H = ".. temp .." , ".. hum)
+	else
+		logg("get_heat_or_humidity -> cached T,H = ".. clima_cache[1] .." , ".. clima_cache[2])
+	end
+	return clima_cache[what]
+end
+
+minetest.get_heat     = function(pos) return get_heat_or_humidity(pos,1) end
+minetest.get_humidity = function(pos) return get_heat_or_humidity(pos,2) end
+
 
 --=============================================================================
 -- GENERATION
@@ -770,7 +779,7 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 				This is only noticeable after much exploring,
 				 but makes the map less interesting.
 				Noise added to make waves more varied along the map.
-				- xab: changes the centre of symmetry. Means ranges aren't straight lines.
+				-xab: shifts symmetry
 				-whs: creates high and low points (must be small or crazy effects!).
 				-xroll: number and size of ranges.
 				-mup: low and high points
@@ -778,19 +787,19 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 
 				--absolute for x (for symmetry on both sides of map)
-				local xab = math.abs(x + (n_terr * -843))
+				local xab = math.abs(x + (n_terr * 1466))
 				--x axis terrain gradient. 0 at centre. 1 at edges.
 				--Used by equations to adjust along x axis
 				local xtgrad = (xab/YMAX)
 
 				--amplitude... going from 1 to zero at map edge
-				local whs = (1-xtgrad) + (ab_t2 * -0.05)
+				local whs = (1-xtgrad) + (n_terr * 0.06)
 
 
 				--Move up/down along x axis. Goes from +1 to -1
 				--mup raises and lowers along x axis. the two terms cancel out in middle of x range (15k).
 				--aimed for equations that need to lift map centre, sink edges
-				local mup = whs + (-1 * xtgrad) + (n_terr * -0.4)
+				local mup = whs + (-1 * xtgrad) + (n_terr * -0.25)
 
 
 				------------------
@@ -800,11 +809,12 @@ table.insert(minetest.registered_on_generateds, 1, (function(minp, maxp, seed)
 
 				--Wave period. "Roll". i.e. how wide/steep and they are.
 				--Gradient widens the ranges towards the edges.
-				local x_roll = XRS + (XRS * xtgrad)  + (1686 - (ab_t * 1686))
+				local x_roll = XRS + (XRS * xtgrad)  + (234 - (n_terr * 234))
 
 				--The Wave!
-				local xwav = (whs*math.cos(x/x_roll))    -- north south wave (main ranges)
-				local xwav2 = (whs*math.cos(x/(x_roll/6.89))) --smaller more detailed wave
+				-- (while cos doesn't need an absolute value for x, it does need the noise adjusted one, hence xab)
+				local xwav = (whs*math.cos(xab/x_roll))    -- north south wave (main ranges)
+				local xwav2 = (whs*math.cos(xab/(x_roll/6.89))) --smaller more detailed wave
 
 
 
@@ -2144,12 +2154,12 @@ local find_ground_level_at = function(x,z , alt_max, alt_min, step)
 	local n_terr   = minetest.get_perlin(np_terrain):get_2d({x=x,y=z})
 	local n_terr2  = minetest.get_perlin(np_terrain2):get_2d({x=x,y=z})
 	----------------------------------------------------------------------
-	local xab = math.abs(x + (n_terr * -843))
+	local xab = math.abs(x + (n_terr * 1466))
 	local xtgrad = (xab/YMAX)
-	local whs = (1-xtgrad) + (math.abs(n_terr2) * -0.05)
-	local mup =  whs + (-1 * xtgrad) + (n_terr * -0.4)
-	local x_roll = XRS + (XRS * xtgrad)  + (1686 - (math.abs(n_terr) * 1686))
-	local dwav = ((whs*math.cos(x/(x_roll/6.89))) ^ 3)*1.67 + ((whs*math.cos(x/x_roll)) ^ 3)*6.89 + mup*10.81
+	local whs = (1-xtgrad) + (n_terr * 0.06)
+	local mup = whs + (-1 * xtgrad) + (n_terr * -0.25)
+	local x_roll = XRS + (XRS * xtgrad)  + (234 - (n_terr * 234))
+	local dwav = ((whs*math.cos(xab/(x_roll/6.89))) ^ 3)*1.67 + ((whs*math.cos(xab/x_roll)) ^ 3)*6.89 + mup*10.81
 	--local dnoi = (n_terr^3 + n_terr*0.5 + n_terr2*n_terr*0.8) * 2.8 * (whs + 0.02)
 	local dnoi = 2.8 * n_terr * (0.5 + n_terr^2 + n_terr2*0.8) * (whs + 0.02)
 	local pos = {x=x,z=z}   -- y set in the loop
