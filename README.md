@@ -1,7 +1,7 @@
 # mg_tectonic
 by Dokimi
 
-Current version 0.3.1 + Odacirs improvements + experiments
+Current version 0.3.2
 
 # Map Outline
 A naturalistic mapgen for Minetest, based around mimicking the landscape of a tectonic plate boundary.
