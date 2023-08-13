@@ -137,6 +137,7 @@ local c_dirt = minetest.get_content_id("default:dirt")
 --surfaces
 local c_dirtgr = minetest.get_content_id("default:dirt_with_grass")
 local c_dirtdgr = minetest.get_content_id("default:dirt_with_dry_grass")
+local c_dry_dirtdgr = minetest.get_content_id("default:dry_dirt_with_dry_grass")
 local c_dirtsno = minetest.get_content_id("default:dirt_with_snow")
 local c_dirtlit = minetest.get_content_id("default:dirt_with_rainforest_litter")
 local c_dirtconlit = minetest.get_content_id("default:dirt_with_coniferous_litter")
@@ -267,7 +268,7 @@ for i in ipairs(plantlist1) do
 			and t.disturb < dist_max
 			and (t.nodu == c_dirtlit
 				or t.nodu == c_dirtconlit
-			  or t.nodu == c_dirtgr
+				or t.nodu == c_dirtgr
 				or t.nodu == c_dirtdgr
 				or t.nodu == c_dirtsno
 				or t.nodu == c_permamoss)
@@ -279,7 +280,7 @@ end
 
 
 
---Normal soils and desert sands,
+--Normal soils and dry and desert sands,
 local plantlist2 = {
 	--Dry grass ..higher numbered grass is taller
 	{"default:dry_grass_1", lo_cov, uncommon, 21, (spolar - htol), (tropic + htol), (arid - mtol), (average + ltol), (old - ltol), (open + htol)},
@@ -318,6 +319,7 @@ for i in ipairs(plantlist2) do
 			and (t.nodu == c_dirtlit
 				or t.nodu == c_dirtconlit
 			  or t.nodu == c_dirtgr
+				or t.nodu == c_dry_dirtdgr
 				or t.nodu == c_dirtdgr
 				or t.nodu == c_dsand)
 		end,
@@ -375,7 +377,7 @@ mgtec.register_plant({
 	density = rare,
 	priority = 54,
 	check = function(t, pos)
-		return t.nodu == c_permamoss or t.nodu == c_permastone or t.nodu == c_dsand or t.nodu == c_sand2 or t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_sand or t.nodu == c_dirtsno or t.nodu == c_gravel or t.nodu == c_dirtconlit
+		return t.nodu == c_permamoss or t.nodu == c_permastone or t.nodu == c_dsand or t.nodu == c_sand2 or t.nodu == c_dry_dirtdgr or t.nodu == c_dirtdgr or t.nodu == c_dirtgr or t.nodu == c_sand or t.nodu == c_dirtsno or t.nodu == c_gravel or t.nodu == c_dirtconlit
 	end,
 })
 
@@ -386,7 +388,7 @@ mgtec.register_plant({
 	density = rare,
 	priority = 55,
 	check = function(t, pos)
-		return t.temp > (stropic - htol) and t.humidity > 1 and t.humidity < arid and t.disturb < transition and (t.nodu ==  c_dsand or t.nodu ==  c_dirtdgr or t.nodu ==  c_gravel)
+		return t.temp > (stropic - htol) and t.humidity > 1 and t.humidity < arid and t.disturb < transition and (t.nodu ==  c_dsand or t.nodu == c_dry_dirtdgr or t.nodu ==  c_dirtdgr or t.nodu ==  c_gravel)
 	end,
 })
 
@@ -420,7 +422,7 @@ mgtec.register_plant({
 	density = rare,
 	priority = 58,
 	check = function(t, pos)
-		return t.temp > 1 and t.humidity > arid and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone or t.nodu == c_clay)
+		return t.temp > 1 and t.humidity > arid and (t.nodu == c_dirtlit or t.nodu == c_dirtgr or t.nodu == c_dry_dirtdgr or t.nodu == c_dirtdgr or t.nodu == c_dirtsno or t.nodu == c_dirtconlit or t.nodu == c_permamoss or t.nodu == c_permastone or t.nodu == c_clay)
 	end,
 })
 
@@ -472,6 +474,7 @@ for i in ipairs(bushlist1) do
 			and (t.nodu == c_dirtlit
 				or t.nodu == c_dirtconlit
 			  or t.nodu == c_dirtgr
+				or t.nodu == c_dry_dirtdgr
 				or t.nodu == c_dirtdgr
 				or t.nodu == c_dirtsno
 				or t.nodu == c_permamoss)
@@ -545,6 +548,7 @@ for i in ipairs(bushlist2) do
 			and (t.nodu == c_dirtlit
 				or t.nodu == c_dirtconlit
 			  or t.nodu == c_dirtgr
+				or t.nodu == c_dry_dirtdgr
 				or t.nodu == c_dirtdgr
 				or t.nodu == c_dirtsno
 				or t.nodu == c_permamoss)
@@ -608,6 +612,7 @@ for i in ipairs(bushlist3) do
 			and (t.nodu == c_dirtlit
 				or t.nodu == c_dirtconlit
 			  or t.nodu == c_dirtgr
+				or t.nodu == c_dry_dirtdgr
 				or t.nodu == c_dirtdgr
 				or t.nodu == c_dirtsno
 				or t.nodu == c_permamoss)
@@ -638,7 +643,7 @@ mgtec.register_plant({
 	density = super_rare,
 	priority = 5,
 	check = function(t, pos)
-		return t.temp > stropic and t.humidity > arid and t.humidity < dry and t.disturb < old and (t.nodu == c_dsand or t.nodu ==  c_dirtdgr)
+		return t.temp > stropic and t.humidity > arid and t.humidity < dry and t.disturb < old and (t.nodu == c_dsand or t.nodu == c_dry_dirtdgr or t.nodu ==  c_dirtdgr)
 	end,
 	grow = function(nodes, pos, data, data2,area)
 		local rand = math.random()
@@ -687,7 +692,6 @@ for i in ipairs(bushlist4) do
 		nodes = {
 			trunk = lnodes_tr,
 			leaves = lnodes_le,
-			fruit = lnodes_fr,
 			air = "air", ignore = "ignore",
 		},
 		cover = lcover,
@@ -704,6 +708,7 @@ for i in ipairs(bushlist4) do
 			and (t.nodu == c_dirtlit
 				or t.nodu == c_dirtconlit
 			  or t.nodu == c_dirtgr
+				or t.nodu == c_dry_dirtdgr
 				or t.nodu == c_dirtdgr
 				or t.nodu == c_dirtsno
 				or t.nodu == c_permamoss)

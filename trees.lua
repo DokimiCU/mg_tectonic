@@ -46,7 +46,7 @@ local function make_leavesblob(pos, data, area, leaves, air, ignore, radius, np,
 	local length = vector.subtract(int_maxp, int_minp)
 	local chulens = vector.add(length, 1)
 	local obj = minetest.get_perlin_map(np, chulens)
-	local pmap = obj:get3dMap_flat(minp)
+	local pmap = obj:get_3d_map_flat(minp)
 	local i = 1
 	-- iterate for every position
 	-- calculate the distance from the center by the Pythagorean theorem: d = sqrt(x²+y²+z²)

@@ -1,5 +1,0 @@
-default
-flowers
-farming
-beds?
-

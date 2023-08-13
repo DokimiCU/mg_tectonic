@@ -1,0 +1,7 @@
+TODO:
+fix snow layers being placed in caves
+in areas with inconsistent ice the terrain gets extremely rough
+fix missing top soil at lower chunk boundaries
+
+DONE:
+stop plants pointlessly checking whether they can grow on top of "air" nodes

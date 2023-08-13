@@ -1,3 +1,0 @@
-mg_tectonic
-
-A naturalistic map generator, that mimics the landscape of a tectonic plate boundary.
